@@ -1,0 +1,4 @@
+flask
+gunicorn
+fyers-apiv3
+firebase-admin

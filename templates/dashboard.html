@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyBullAndBearFire</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#1e293b',
+                            950: '#020617',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .glass-header {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(8px);
+        }
+
+        .call-bg {
+            background-color: rgba(6, 78, 59, 0.4);
+            color: #a7f3d0;
+        }
+
+        /* Emerald-900/40 */
+        .put-bg {
+            background-color: rgba(127, 29, 29, 0.4);
+            color: #fecaca;
+        }
+
+        /* Rose-900/40 */
+
+        .atm-row {
+            background: linear-gradient(90deg, rgba(234, 88, 12, 0.1) 0%, rgba(234, 88, 12, 0.2) 50%, rgba(234, 88, 12, 0.1) 100%) !important;
+            border-left: 2px solid #f97316;
+            border-right: 2px solid #f97316;
+        }
+
+        /* Sticky Header for Tables */
+        th {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+        }
+
+        /* Fade transition */
+        .fade-in-up {
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body
+    class="bg-slate-950 text-slate-200 font-sans min-h-screen flex flex-col overflow-hidden selection:bg-indigo-500/30">
+
+    <!-- Top Navigation Bar -->
+    <header class="glass-header border-b border-slate-800 shadow-lg shrink-0 z-30">
+        <div class="max-w-full mx-auto px-6 py-3 flex justify-between items-center">
+
+            <!-- Left: Branding & Nav -->
+            <div class="flex items-center space-x-8">
+                <div class="flex items-center gap-2 group cursor-pointer">
+                    <div
+                        class="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-500 to-rose-600 flex items-center justify-center font-bold text-white shadow-lg group-hover:scale-110 transition">
+                        B</div>
+                    <span
+                        class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-200 to-rose-400">
+                        MyBull<span class="font-light text-rose-400">AndBearFire</span>
+                    </span>
+                </div>
+
+                <!-- Nav Tabs -->
+                <nav class="flex space-x-1 bg-slate-900/50 p-1 rounded-lg border border-slate-800 backdrop-blur-sm">
+                    <button onclick="switchView('overview')" id="btn-overview"
+                        class="px-4 py-1.5 rounded-md text-sm font-medium transition-all shadow-sm">
+                        Overview
+                    </button>
+                    <button onclick="switchView('analysis')" id="btn-analysis"
+                        class="px-4 py-1.5 rounded-md text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-slate-800">
+                        Analysis
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Center: Consolidated Signals -->
+            <div id="header-signals" class="hidden md:flex gap-6 text-xs font-medium tracking-wide">
+                <!-- Injected via JS -->
+                <span class="text-slate-600 animate-pulse">Scanning market...</span>
+            </div>
+
+            <!-- Right: Controls -->
+            <div class="flex items-center gap-4">
+                <!-- Symbol Select -->
+                <div class="relative group">
+                    <select id="symbolSelect"
+                        class="appearance-none bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg px-4 py-2 pr-8 focus:ring-2 focus:ring-indigo-500/50 outline-none cursor-pointer hover:border-slate-600 transition"
+                        onchange="updateUI()">
+                        <option value="NIFTY">NIFTY 50</option>
+                        <option value="BANKNIFTY">BANK NIFTY</option>
+                        <option value="FINNIFTY">FIN NIFTY</option>
+                    </select>
+                    <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Fyers Connect Status -->
+                <!-- Fyers Connect Status -->
+                <a href="{{ '/api/logout' if fyers_connected else '/connect' }}"
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-800 bg-slate-900/50 hover:bg-slate-800 transition text-xs font-medium group"
+                    title="{{ 'Disconnect' if fyers_connected else 'Connect to Fyers' }}">
+                    <span class="relative flex h-2 w-2">
+                        <span
+                            class="animate-ping absolute inline-flex h-full w-full rounded-full {{ 'bg-emerald-400' if fyers_connected else 'bg-rose-500' }} opacity-75"></span>
+                        <span
+                            class="relative inline-flex rounded-full h-2 w-2 {{ 'bg-emerald-500' if fyers_connected else 'bg-rose-600' }}"></span>
+                    </span>
+                    <span
+                        class="{{ 'text-emerald-400' if fyers_connected else 'text-rose-400' }} group-hover:text-white transition-colors">
+                        {{ 'Live (Logout)' if fyers_connected else 'Offline' }}
+                    </span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main
+        class="flex-grow relative overflow-hidden bg-[url('https://grainy-gradients.vercel.app/noise.svg')] bg-opacity-20">
+
+        <!-- View 1: Dashboard Overview (Market Summary) -->
+        <div id="view-overview"
+            class="absolute inset-0 p-8 overflow-auto flex flex-col items-center justify-start pt-16">
+
+            <div class="w-full max-w-6xl mb-8 fade-in-up">
+                <h2
+                    class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-slate-200 via-slate-100 to-slate-400 mb-2">
+                    Market Overview</h2>
+                <p class="text-slate-500">Real-time sentiment and key metrics across indices.</p>
+            </div>
+
+            <!-- Active Alerts Section -->
+            <div id="market-alerts" class="w-full max-w-6xl mb-8 hidden fade-in-up"
+                onclick="this.classList.add('hidden')">
+                <!-- Alerts injected via JS -->
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl">
+                <!-- Cards injected via JS -->
+                <div id="summary-cards" class="contents">
+                    <!-- Loading State -->
+                    <div class="col-span-3 h-48 rounded-2xl glass animate-pulse flex items-center justify-center">
+                        <div class="flex flex-col items-center gap-2">
+                            <div
+                                class="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin">
+                            </div>
+                            <span class="text-slate-500 font-medium">Fetching Live Data...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- View 2: Detailed Analysis (Full Chain) -->
+        <div id="view-analysis" class="absolute inset-0 p-4 overflow-hidden hidden flex flex-col">
+
+            <!-- Analysis Header -->
+            <div class="glass px-6 py-4 rounded-xl mb-4 shrink-0 flex justify-between items-center shadow-lg">
+                <div class="flex gap-8 items-center">
+                    <div>
+                        <span class="text-sm text-slate-500 uppercase tracking-wider block mb-1">Looking at</span>
+                        <span class="text-2xl font-bold text-white tracking-tight current-symbol-text">NIFTY</span>
+                    </div>
+
+                    <div class="h-8 w-px bg-slate-700"></div>
+
+                    <div class="flex gap-6 text-sm">
+                        <div>
+                            <span class="block text-[10px] text-slate-500 uppercase">PCR</span>
+                            <span id="pcr-value" class="font-mono font-bold text-slate-200 text-lg">--</span>
+                        </div>
+                        <div>
+                            <span class="block text-[10px] text-slate-500 uppercase">Max Pain</span>
+                            <span id="max-pain-value"
+                                class="font-mono font-bold text-indigo-400 text-lg shadow-indigo-500/20 drop-shadow-sm">--</span>
+                        </div>
+                        <div>
+                            <span class="block text-[10px] text-slate-500 uppercase">Sentiment</span>
+                            <span id="sentiment-value" class="font-bold text-lg">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-right">
+                    <span class="block text-[10px] text-slate-500 uppercase">Spot Price</span>
+                    <span id="spot-price-analysis"
+                        class="font-mono font-bold text-3xl text-yellow-400 drop-shadow-md">---.--</span>
+                </div>
+            </div>
+
+            <!-- Full Table -->
+            <div class="flex-grow glass rounded-xl shadow-2xl overflow-hidden border border-slate-800 flex flex-col">
+                <div class="overflow-auto custom-scrollbar flex-grow">
+                    <table class="w-full text-xs text-center border-collapse">
+                        <thead
+                            class="bg-slate-900/90 text-slate-400 uppercase tracking-widest text-[9px] font-semibold backdrop-blur">
+                            <tr>
+                                <th colspan="8"
+                                    class="py-2 bg-gradient-to-b from-emerald-950/50 to-emerald-900/20 border-b border-emerald-900/30 text-emerald-400">
+                                    CALLS (Bullish)</th>
+                                <th rowspan="2"
+                                    class="py-2 bg-slate-950 border-x border-slate-800 text-slate-200 w-24 sticky left-0 z-30 shadow-xl">
+                                    Strike</th>
+                                <th colspan="8"
+                                    class="py-2 bg-gradient-to-b from-rose-950/50 to-rose-900/20 border-b border-rose-900/30 text-rose-400">
+                                    PUTS (Bearish)</th>
+                            </tr>
+                            <tr class="bg-slate-900 border-b border-slate-800">
+                                <th class="py-3 px-2">OI</th>
+                                <th class="py-3 px-2">OI Chg</th>
+                                <th class="py-3 px-2 hidden md:table-cell text-slate-600">Vol</th>
+                                <th class="py-3 px-2 hidden lg:table-cell text-slate-600">IV</th>
+                                <th class="py-3 px-2 hidden lg:table-cell text-slate-600">Delta</th>
+                                <th class="py-3 px-2">Trend</th>
+                                <th class="py-3 px-2">LTP</th>
+                                <th class="py-3 px-2 border-r border-slate-800">Chg</th>
+
+                                <th class="py-3 px-2 border-l border-slate-800">LTP</th>
+                                <th class="py-3 px-2">Chg</th>
+                                <th class="py-3 px-2">Trend</th>
+                                <th class="py-3 px-2 hidden lg:table-cell text-slate-600">Delta</th>
+                                <th class="py-3 px-2 hidden lg:table-cell text-slate-600">IV</th>
+                                <th class="py-3 px-2 hidden md:table-cell text-slate-600">Vol</th>
+                                <th class="py-3 px-2">OI Chg</th>
+                                <th class="py-3 px-2">OI</th>
+                            </tr>
+                        </thead>
+                        <tbody id="full-chain-body" class="divide-y divide-slate-800/50 font-mono text-slate-300">
+                            <tr>
+                                <td colspan="17" class="p-10 text-center text-slate-500 italic">Initializing Data
+                                    Feed...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Unified Logic -->
+    <script>
+        let currentView = 'overview'; // 'overview' | 'analysis'
+        let currentSymbol = 'NIFTY';
+
+        // --- View Switching ---
+        function switchView(view) {
+            currentView = view;
+
+            // Toggle Content
+            const vOverview = document.getElementById('view-overview');
+            const vAnalysis = document.getElementById('view-analysis');
+
+            if (view === 'overview') {
+                vAnalysis.classList.add('hidden');
+                vOverview.classList.remove('hidden');
+                setTimeout(() => vOverview.classList.add('fade-in-up'), 10); // Re-trigger animation
+            } else {
+                vOverview.classList.add('hidden');
+                vOverview.classList.remove('fade-in-up');
+                vAnalysis.classList.remove('hidden');
+                vAnalysis.classList.add('fade-in-up');
+            }
+
+            // Toggle Buttons
+            const btnOver = document.getElementById('btn-overview');
+            const btnAnal = document.getElementById('btn-analysis');
+
+            const activeClass = "px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 transform scale-105";
+            const inactiveClass = "px-4 py-1.5 rounded-md text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-slate-800";
+
+            if (view === 'overview') {
+                btnOver.className = activeClass;
+                btnAnal.className = inactiveClass;
+            } else {
+                btnOver.className = inactiveClass;
+                btnAnal.className = activeClass;
+            }
+            updateUI();
+        }
+
+        // --- Data Fetching ---
+        async function updateUI() {
+            currentSymbol = document.getElementById('symbolSelect').value;
+
+            // Update Text
+            document.querySelectorAll('.current-symbol-text').forEach(el => el.innerText = currentSymbol);
+
+            try {
+                const res = await fetch('/api/option_chain');
+                const data = await res.json();
+
+                if (data) {
+                    updateHeaderSignals(data);
+
+                    if (currentView === 'overview') {
+                        renderSummaryCards(data);
+                    } else {
+                        // Analysis View
+                        if (data[currentSymbol]) {
+                            const symbolData = data[currentSymbol];
+                            updateSpotPrice(symbolData.spot);
+                            renderFullChain(symbolData.chain);
+                            updateAnalysisHeader(symbolData);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error("Fetch Error:", e);
+            }
+        }
+
+        // --- Sub-Renderers ---
+
+        function updateSpotPrice(price) {
+            const p = price ? price.toFixed(2) : '---.--';
+            document.getElementById('spot-price-analysis').innerText = p;
+        }
+
+        function updateHeaderSignals(data) {
+            const container = document.getElementById('header-signals');
+            let html = '';
+            ['NIFTY', 'BANKNIFTY', 'FINNIFTY'].forEach(sym => {
+                if (data[sym] && data[sym].sentiment) {
+                    const s = data[sym].sentiment;
+                    let color = 'text-slate-500';
+                    if (s === 'Bullish') color = 'text-emerald-400 font-bold';
+                    if (s === 'Bearish') color = 'text-rose-400 font-bold';
+                    html += `<div class="flex items-center gap-2"><span class="text-slate-400">${sym}</span> <span class="${color}">${s}</span></div>`;
+                }
+            });
+            container.innerHTML = html || '<span class="text-slate-600">No signals</span>';
+        }
+
+        function updateAnalysisHeader(data) {
+            const pcrEl = document.getElementById('pcr-value');
+            const sentiEl = document.getElementById('sentiment-value');
+            const mpEl = document.getElementById('max-pain-value');
+
+            pcrEl.innerText = data.pcr || '-';
+            sentiEl.innerText = data.sentiment || '-';
+            if (mpEl) mpEl.innerText = (data.max_pain || '-');
+
+            sentiEl.className = 'font-bold text-lg';
+            if (data.sentiment === 'Bullish') sentiEl.classList.add('text-emerald-400');
+            else if (data.sentiment === 'Bearish') sentiEl.classList.add('text-rose-400');
+            else sentiEl.classList.add('text-slate-400');
+        }
+
+        function renderAlerts(data) {
+            const container = document.getElementById('market-alerts');
+            let hasAlerts = false;
+            let html = '';
+
+            ['NIFTY', 'BANKNIFTY', 'FINNIFTY'].forEach(sym => {
+                if (data[sym] && data[sym].alerts && data[sym].alerts.length > 0) {
+                    hasAlerts = true;
+                    data[sym].alerts.forEach(msg => {
+                        let color = 'border-l-4 border-amber-500 bg-amber-900/10 text-amber-200';
+                        if (msg.includes("Bullish")) color = 'border-l-4 border-emerald-500 bg-emerald-900/10 text-emerald-200';
+                        if (msg.includes("Bearish")) color = 'border-l-4 border-rose-500 bg-rose-900/10 text-rose-200';
+
+                        html += `
+                        <div class="${color} p-4 rounded-lg shadow-lg mb-3 flex justify-between items-center backdrop-blur-md cursor-pointer hover:scale-[1.01] transition">
+                            <div class="flex items-center gap-3">
+                                <span class="px-2 py-0.5 rounded bg-black/30 text-xs font-bold font-mono tracking-wider">${sym}</span>
+                                <span class="font-medium">${msg}</span>
+                            </div>
+                            <span class="text-[10px] uppercase font-bold opacity-60 ml-4">Now</span>
+                        </div>
+                        `;
+                    });
+                }
+            });
+
+            if (hasAlerts) {
+                container.innerHTML = html;
+                container.classList.remove('hidden');
+                container.classList.add('fade-in-up');
+            } else {
+                container.innerHTML = '';
+                container.classList.add('hidden');
+                container.classList.remove('fade-in-up');
+            }
+        }
+
+        // --- Render: Summary Cards (Overview) ---
+        function renderSummaryCards(data) {
+            renderAlerts(data);
+
+            const container = document.getElementById('summary-cards');
+            container.innerHTML = '';
+
+            const symbols = ['NIFTY', 'BANKNIFTY', 'FINNIFTY'];
+
+            symbols.forEach((sym, index) => {
+                const d = data[sym] || {};
+                const spot = d.spot ? d.spot.toFixed(2) : '---.--';
+                const ch = d.ch || 0;
+                const chp = d.chp || 0;
+                const pcr = d.pcr !== undefined ? d.pcr : 0; // Ensure number
+                const sentiment = d.sentiment || 'Neutral';
+                const maxPain = d.max_pain || '-';
+
+                // Colors
+                const priceColor = ch >= 0 ? 'text-emerald-400' : 'text-rose-400';
+                const sign = ch >= 0 ? '+' : '';
+
+                let sentiColor = 'text-slate-400';
+                let tileBgClass = 'glass border-slate-700/50'; // Default Neutral
+                let glowColor = 'shadow-indigo-500/10';
+
+                if (sentiment === 'Bullish') {
+                    sentiColor = 'text-emerald-400';
+                    // Stronger Gradient & Border & Shadow
+                    tileBgClass = 'bg-gradient-to-br from-slate-900 via-emerald-900/60 to-slate-900 border-2 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.3)]';
+                    glowColor = 'shadow-emerald-400/30';
+                }
+                if (sentiment === 'Bearish') {
+                    sentiColor = 'text-rose-400';
+                    // Stronger Gradient & Border & Shadow
+                    tileBgClass = 'bg-gradient-to-br from-slate-900 via-rose-900/60 to-slate-900 border-2 border-rose-500/50 shadow-[0_0_30px_rgba(244,63,94,0.3)]';
+                    glowColor = 'shadow-rose-400/30';
+                }
+
+                // Stagger Animation
+                const delay = index * 100;
+
+                const cardHtml = `
+                    <div class="${tileBgClass} rounded-2xl p-6 shadow-2xl hover:${glowColor} transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden group fade-in-up border" style="animation-delay: ${delay}ms">
+                        
+                        <div class="absolute -right-4 -top-4 opacity-[0.03] group-hover:opacity-[0.08] transition duration-700">
+                             <span class="text-9xl font-black text-white select-none">${sym[0]}</span>
+                        </div>
+
+                        <div class="flex justify-between items-start mb-2 z-10 relative">
+                             <h3 class="text-lg font-bold text-slate-300 tracking-wide">${sym}</h3>
+                             <span class="px-2 py-1 rounded text-[10px] font-bold uppercase bg-slate-800/50 border border-slate-700/50 text-slate-400 backdrop-blur">${sentiment}</span>
+                        </div>
+                        
+                        <div class="flex items-baseline gap-3 mb-4 z-10 relative">
+                             <div class="text-3xl font-mono font-bold text-white tracking-tighter">${spot}</div>
+                             <div class="text-xs font-mono font-medium ${priceColor}">
+                                ${sign}${ch.toFixed(2)} (${sign}${chp.toFixed(2)}%)
+                             </div>
+                        </div>
+                        
+                        <!-- Gauge Area -->
+                        <div class="relative z-10 flex justify-center py-2">
+                             <div id="gauge-${sym}" class="-my-4"></div>
+                             
+                             <!-- Overlay Score -->
+                             <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-4">
+                                <span class="text-2xl font-bold text-white tracking-tighter">${pcr}</span>
+                                <span class="text-[9px] text-slate-500 uppercase tracking-widest">PCR</span>
+                             </div>
+                        </div>
+
+                        <div class="w-full flex justify-between items-center mt-2 px-2 border-t border-slate-700/30 pt-4 z-10 relative">
+                            <div class="text-center">
+                                <div class="text-[9px] text-slate-500 uppercase tracking-wider mb-0.5">Max Pain</div>
+                                <div class="text-sm font-mono font-bold text-indigo-400">${maxPain}</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-[9px] text-slate-500 uppercase tracking-wider mb-0.5">Sentiment</div>
+                                <div class="text-xs font-bold ${sentiColor}">${sentiment}</div>
+                            </div>
+                        </div>
+                        
+                        <button onclick="goToAnalysis('${sym}')" class="mt-5 w-full py-2.5 bg-slate-800/80 hover:bg-slate-700 text-xs font-bold uppercase tracking-widest rounded-lg border border-slate-700 hover:border-slate-500 transition-all text-slate-300 hover:text-white shadow-lg z-10 relative">
+                            View Deep Dive
+                        </button>
+                    </div>
+                `;
+                container.innerHTML += cardHtml;
+            });
+
+
+            // Initialize Gauges
+            symbols.forEach(sym => {
+                const d = data[sym] || {};
+                const pcr = d.pcr !== undefined ? d.pcr : 0;
+                renderGauge(`gauge-${sym}`, pcr);
+            });
+        }
+
+        function renderGauge(elementId, pcrValue) {
+            // Normalize: 0 to 2 range.
+            // Percentage: (Value / 2) * 100. Cap at 100.
+            const percentage = Math.min(Math.max((pcrValue / 2) * 100, 0), 100);
+
+            // Color Logic
+            let color = '#ef4444'; // Red (Bearish) - Default
+            if (pcrValue >= 0.7) color = '#f97316'; // Orange
+            if (pcrValue >= 0.9) color = '#94a3b8'; // Slate (Neutral)
+            if (pcrValue >= 1.1) color = '#3b82f6'; // Blue
+            if (pcrValue >= 1.3) color = '#10b981'; // Green (Bullish)
+
+            const options = {
+                series: [percentage],
+                chart: {
+                    height: 200,
+                    type: 'radialBar',
+                    offsetY: -20,
+                    sparkline: { enabled: true }
+                },
+                plotOptions: {
+                    radialBar: {
+                        startAngle: -90,
+                        endAngle: 90,
+                        track: {
+                            background: "#1e293b",
+                            strokeWidth: '97%',
+                            margin: 5,
+                        },
+                        dataLabels: {
+                            show: false // We use custom overlay
+                        },
+                        hollow: {
+                            margin: 15,
+                            size: "60%"
+                        }
+                    }
+                },
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        shade: 'dark',
+                        type: 'horizontal',
+                        shadeIntensity: 0.5,
+                        gradientToColors: [color],
+                        inverseColors: true,
+                        opacityFrom: 1,
+                        opacityTo: 1,
+                        stops: [0, 100]
+                    }
+                },
+                stroke: {
+                    lineCap: "round"
+                },
+                colors: [color],
+            };
+
+            // Check if chart already exists (for refresh)? No, we wipe container.
+            const chart = new ApexCharts(document.querySelector("#" + elementId), options);
+            chart.render();
+        }
+
+        function goToAnalysis(symbol) {
+            const sel = document.getElementById('symbolSelect');
+            sel.value = symbol;
+            switchView('analysis');
+        }
+
+        // --- Render: Full Chain (Analysis) ---
+        function renderFullChain(chain) {
+            const tbody = document.getElementById('full-chain-body');
+            tbody.innerHTML = '';
+
+            chain.forEach(row => {
+                const isAtm = row.is_atm;
+                const tr = document.createElement('tr');
+                tr.className = isAtm ? 'atm-row font-bold text-white relative z-10' : 'hover:bg-slate-800/50 border-b border-slate-800/50 transition-colors';
+
+                // Helper to format
+                const fmt = (n) => n ? n.toFixed(2) : '-';
+                const fmtInt = (n) => n ? n.toLocaleString() : '-';
+                const colorVal = (n) => n > 0 ? 'text-emerald-400' : (n < 0 ? 'text-rose-400' : 'text-slate-500');
+
+                // Calls
+                tr.innerHTML += `
+                    <td class="call-bg py-2 text-slate-200 border-r border-emerald-900/10 font-mono">${fmtInt(row.ce_oi)}</td>
+                    <td class="call-bg py-2 ${colorVal(row.ce_oich)} font-mono text-[11px]">${fmtInt(row.ce_oich)}</td>
+                    <td class="call-bg py-2 text-slate-500 hidden md:table-cell text-[10px]">${fmtInt(row.ce_vol)}</td>
+                    <td class="call-bg py-2 text-amber-200/60 hidden lg:table-cell font-mono">${fmt(row.ce_iv)}</td>
+                    <td class="call-bg py-2 text-indigo-300/80 hidden lg:table-cell font-mono">${fmt(row.ce_delta)}</td>
+                    <td class="call-bg py-2">${getTrendBadge(row.ce_trend)}</td>
+                    <td class="call-bg py-2 font-bold text-emerald-200 text-sm border-l border-emerald-900/10 tracking-tight">${fmt(row.ce_ltp)}</td>
+                    <td class="call-bg py-2 ${colorVal(row.ce_ch)} text-[11px] border-r border-slate-700/30">${fmt(row.ce_ch)}</td>
+                `;
+
+                // Strike
+                tr.innerHTML += `
+                    <td class="py-2 font-bold bg-slate-900 text-white border-x border-slate-700 text-sm shadow-inner">${row.strike}</td>
+                `;
+
+                // Puts
+                tr.innerHTML += `
+                    <td class="put-bg py-2 font-bold text-rose-200 text-sm border-l border-slate-700/30 tracking-tight">${fmt(row.pe_ltp)}</td>
+                    <td class="put-bg py-2 ${colorVal(row.pe_ch)} text-[11px] border-r border-rose-900/10">${fmt(row.pe_ch)}</td>
+                    <td class="put-bg py-2">${getTrendBadge(row.pe_trend)}</td>
+                    <td class="put-bg py-2 text-indigo-300/80 hidden lg:table-cell font-mono">${fmt(row.pe_delta)}</td>
+                    <td class="put-bg py-2 text-amber-200/60 hidden lg:table-cell font-mono">${fmt(row.pe_iv)}</td>
+                    <td class="put-bg py-2 text-slate-500 hidden md:table-cell text-[10px]">${fmtInt(row.pe_vol)}</td>
+                    <td class="put-bg py-2 ${colorVal(row.pe_oich)} font-mono text-[11px]">${fmtInt(row.pe_oich)}</td>
+                    <td class="put-bg py-2 text-slate-200 border-l border-rose-900/10 font-mono">${fmtInt(row.pe_oi)}</td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        function getTrendBadge(trend) {
+            if (!trend || trend === 'Neutral' || trend === '-') return '<span class="text-slate-700">-</span>';
+
+            let code = trend.split(' ').map(w => w[0]).join('');
+            let classes = "px-1.5 py-0.5 rounded text-[9px] font-bold border tracking-wider ";
+
+            if (trend === 'Long Buildup') classes += "bg-emerald-950/40 text-emerald-400 border-emerald-800/50";
+            else if (trend === 'Short Covering') classes += "bg-teal-950/40 text-teal-400 border-teal-800/50";
+            else if (trend === 'Short Buildup') classes += "bg-rose-950/40 text-rose-400 border-rose-800/50";
+            else if (trend === 'Long Unwinding') classes += "bg-orange-950/40 text-orange-400 border-orange-800/50";
+
+            return `<span class="${classes}" title="${trend}">${code}</span>`;
+        }
+
+        // --- Init ---
+        // Switch to overview by default, trigger default styling
+        switchView('overview');
+
+        // Auto-refresh every 3s
+        setInterval(updateUI, 3000);
+        setInterval(() => window.location.reload(), 300000); // Reload every 5 mins
+
+        updateUI(); // First load
+    </script>
+</body>
+
+</html>

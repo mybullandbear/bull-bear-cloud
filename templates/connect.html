@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect Fyers</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .card {
+            background-color: #1e1e1e;
+            padding: 40px;
+            border-radius: 8px;
+            width: 400px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #4caf50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #aaa;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            background-color: #2c2c2c;
+            border: 1px solid #444;
+            color: #fff;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        input:focus {
+            border-color: #4caf50;
+            outline: none;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            background-color: #45a049;
+        }
+
+        .btn-secondary {
+            background-color: #333;
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover {
+            background-color: #444;
+        }
+
+        .helper {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h1>Connect Fyers</h1>
+
+        <div class="form-group">
+            <label>Client ID (App ID)</label>
+            <input type="text" id="client_id" placeholder="XPxxxxx-100" value="{{ creds.client_id }}">
+            <div class="helper">Found in Fyers API Dashboard</div>
+        </div>
+
+        <div class="form-group">
+            <label>Secret Key</label>
+            <input type="password" id="secret_key" placeholder="••••••••" value="{{ creds.secret_key }}">
+        </div>
+
+        <button class="btn" onclick="startLogin()">Login with Fyers</button>
+        <button class="btn btn-secondary" onclick="window.location.href='/'">Back to Dashboard</button>
+    </div>
+
+    <script>
+        async function startLogin() {
+            const clientId = document.getElementById('client_id').value;
+            const secretKey = document.getElementById('secret_key').value;
+
+            if (!clientId || !secretKey) {
+                alert("Please enter both Client ID and Secret Key");
+                return;
+            }
+
+            // 1. Save Credentials
+            const res = await fetch('/api/save_creds', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ client_id: clientId, secret_key: secretKey })
+            });
+
+            if (res.ok) {
+                // 2. Open Popup for OAuth
+                // Use a slightly larger window for better login experience
+                const width = 600;
+                const height = 700;
+                const left = (screen.width - width) / 2;
+                const top = (screen.height - height) / 2;
+
+                window.open(
+                    '/api/fyers_login',
+                    'FyersAuth',
+                    `width=${width},height=${height},top=${top},left=${left},scrollbars=yes`
+                );
+            } else {
+                alert("Failed to save credentials");
+            }
+        }
+    </script>
+</body>
+
+</html>

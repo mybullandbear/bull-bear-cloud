@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Full Option Chain</title>
+    <!-- Tailwind CSS (via CDN for simplicity) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .call-bg {
+            background-color: #ecfdf5;
+        }
+
+        .put-bg {
+            background-color: #fef2f2;
+        }
+
+        .atm-row {
+            background-color: #fff7ed;
+            border: 2px solid #f97316;
+        }
+
+        th {
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 10;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 min-h-screen p-4">
+
+    <!-- Header & Controls -->
+    <div class="max-w-7xl mx-auto mb-4 flex justify-between items-center bg-white p-4 rounded shadow">
+        <h1 class="text-2xl font-bold text-gray-800">Live Option Chain</h1>
+
+        <div class="flex space-x-4">
+            <select id="symbolSelect" class="p-2 border rounded font-bold" onchange="updateChain()">
+                <option value="NIFTY">NIFTY</option>
+                <option value="BANKNIFTY">BANKNIFTY</option>
+                <option value="FINNIFTY">FINNIFTY</option>
+            </select>
+            <a href="/" class="text-blue-600 hover:underline flex items-center">
+                &larr; Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Chain Table -->
+    <div class="max-w-full mx-auto bg-white shadow rounded overflow-auto h-[85vh]">
+        <table class="w-full text-sm text-center border-collapse">
+            <thead class="bg-gray-800 text-white">
+                <tr>
+                    <th colspan="8" class="py-2 bg-green-700 text-white text-lg font-bold">CALLS (CE)</th>
+                    <th rowspan="2" class="py-2 bg-gray-900 text-white border-x border-gray-600 w-24">Strike</th>
+                    <th colspan="8" class="py-2 bg-red-700 text-white text-lg font-bold">PUTS (PE)</th>
+                </tr>
+                <tr class="text-xs uppercase bg-gray-100 text-gray-800 sticky top-10 border-b-2 border-gray-800">
+                    <th class="py-2 px-1">OI</th>
+                    <th class="py-2 px-1">OI Chg</th>
+                    <th class="py-2 px-1">Vol</th>
+                    <th class="py-2 px-1">IV</th>
+                    <th class="py-2 px-1">Delta</th>
+                    <th class="py-2 px-1">Trend</th>
+                    <th class="py-2 px-1">LTP</th>
+                    <th class="py-2 px-1">LTP Chg</th>
+
+                    <th class="py-2 px-1">LTP</th>
+                    <th class="py-2 px-1">LTP Chg</th>
+                    <th class="py-2 px-1">Trend</th>
+                    <th class="py-2 px-1">Delta</th>
+                    <th class="py-2 px-1">IV</th>
+                    <th class="py-2 px-1">Vol</th>
+                    <th class="py-2 px-1">OI Chg</th>
+                    <th class="py-2 px-1">OI</th>
+                </tr>
+            </thead>
+            <tbody id="chainBody">
+                <!-- Data populated via JS -->
+                <tr>
+                    <td colspan="9" class="p-4">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- JavaScript for Auto-Update -->
+    <script>
+        let currentSymbol = 'NIFTY';
+
+        function updateChain() {
+            currentSymbol = document.getElementById('symbolSelect').value;
+            fetchData();
+        }
+
+        async function fetchData() {
+            try {
+                const response = await fetch('/api/option_chain');
+                const data = await response.json();
+
+                if (data && data[currentSymbol] && data[currentSymbol].chain) {
+                    renderTable(data[currentSymbol].chain, data[currentSymbol].spot);
+                    updateSentiment(data[currentSymbol]);
+                }
+            } catch (error) {
+                console.error('Error fetching chain:', error);
+            }
+        }
+
+        function updateSentiment(data) {
+            const pcrEl = document.getElementById('pcrValue');
+            const sentiEl = document.getElementById('sentimentValue');
+
+            pcrEl.innerText = data.pcr || '-';
+            sentiEl.innerText = data.sentiment || '-';
+
+            // Color Sentiment
+            sentiEl.className = '';
+            if (data.sentiment === 'Bullish') sentiEl.className = 'text-green-600 font-bold';
+            else if (data.sentiment === 'Bearish') sentiEl.className = 'text-red-600 font-bold';
+            else sentiEl.className = 'text-gray-600 font-bold';
+        }
+
+        function getTrendBadge(trend) {
+            if (!trend || trend === 'Neutral') return '-';
+            let color = 'bg-gray-200 text-gray-800';
+            let code = trend.split(' ').map(w => w[0]).join(''); // LB, SB, SC, LU
+
+            if (trend === 'Long Buildup') color = 'bg-green-100 text-green-800 border border-green-300';
+            if (trend === 'Short Covering') color = 'bg-green-50 text-green-600 border border-green-200'; // Weaker Bullish
+            if (trend === 'Short Buildup') color = 'bg-red-100 text-red-800 border border-red-300';
+            if (trend === 'Long Unwinding') color = 'bg-red-50 text-red-600 border border-red-200'; // Weaker Bearish
+
+            return `<span class="px-1 py-0.5 rounded text-xs font-bold ${color}" title="${trend}">${code}</span>`;
+        }
+
+        function renderTable(chain, spot) {
+            const tbody = document.getElementById('chainBody');
+            tbody.innerHTML = '';
+
+            chain.forEach(row => {
+                const isAtm = row.is_atm;
+                const tr = document.createElement('tr');
+                tr.className = isAtm ? 'atm-row font-bold' : 'hover:bg-gray-50 border-b';
+
+                // Calls
+                tr.innerHTML += `
+                    <td class="call-bg py-2 text-gray-800">${fmtInt(row.ce_oi)}</td>
+                    <td class="call-bg py-2 ${color(row.ce_oich)}">${fmtInt(row.ce_oich)}</td>
+                    <td class="call-bg py-2 text-gray-600">${fmtInt(row.ce_vol)}</td>
+                    <td class="call-bg py-2 text-purple-700">${fmt(row.ce_iv)}</td>
+                    <td class="call-bg py-2 text-blue-700">${fmt(row.ce_delta)}</td>
+                    <td class="call-bg py-2">${getTrendBadge(row.ce_trend)}</td>
+                    <td class="call-bg py-2 font-bold text-green-700">${fmt(row.ce_ltp)}</td>
+                    <td class="call-bg py-2 ${color(row.ce_ch)}">${fmt(row.ce_ch)}</td>
+                `;
+
+                // Strike
+                tr.innerHTML += `
+                    <td class="py-2 font-bold bg-gray-100 text-gray-800 border-x border-gray-300">${row.strike}</td>
+                `;
+
+                // Puts
+                tr.innerHTML += `
+                    <td class="put-bg py-2 font-bold text-red-700">${fmt(row.pe_ltp)}</td>
+                    <td class="put-bg py-2 ${color(row.pe_ch)}">${fmt(row.pe_ch)}</td>
+                    <td class="put-bg py-2">${getTrendBadge(row.pe_trend)}</td>
+                    <td class="put-bg py-2 text-blue-700">${fmt(row.pe_delta)}</td>
+                    <td class="put-bg py-2 text-purple-700">${fmt(row.pe_iv)}</td>
+                    <td class="put-bg py-2 text-gray-600">${fmtInt(row.pe_vol)}</td>
+                    <td class="put-bg py-2 ${color(row.pe_oich)}">${fmtInt(row.pe_oich)}</td>
+                    <td class="put-bg py-2 text-gray-800">${fmtInt(row.pe_oi)}</td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        function fmt(num) { return num ? num.toFixed(2) : '-'; }
+        function fmtInt(num) { return num ? num.toLocaleString() : '-'; }
+        function color(val) {
+            if (!val) return '';
+            return val > 0 ? 'text-green-600' : (val < 0 ? 'text-red-600' : '');
+        }
+
+        // Init
+        setInterval(fetchData, 5000); // Poll every 5 seconds
+        fetchData();
+    </script>
+</body>
+
+</html>
