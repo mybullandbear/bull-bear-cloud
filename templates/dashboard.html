@@ -360,10 +360,64 @@
                 class="text-[10px] font-bold tracking-wide {{ 'text-emerald-500' if fyers_connected else 'text-rose-500' }}">{{
                 'Status' if fyers_connected else 'Login' }}</span>
         </a>
+        <button id="install-btn"
+            class="hidden flex-1 py-3 flex-col items-center justify-center gap-1 text-amber-500 transition-colors"
+            onclick="installPWA()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg>
+            <span class="text-[10px] font-bold tracking-wide">Install</span>
+        </button>
     </nav>
 
     <!-- Unified Logic -->
     <script>
+        let deferredPrompt;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent the mini-infobar from appearing on mobile
+            e.preventDefault();
+            // Stash the event so it can be triggered later.
+            deferredPrompt = e;
+            // Update UI notify the user they can install the PWA
+            const installButton = document.getElementById('install-btn');
+            if (installButton) {
+                installButton.classList.remove('hidden');
+            }
+        });
+
+        function installPWA() {
+            if (deferredPrompt) {
+                // Show the install prompt
+                deferredPrompt.prompt();
+                // Wait for the user to respond to the prompt
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted the install prompt');
+                    } else {
+                        console.log('User dismissed the install prompt');
+                    }
+                    // Clear the deferred prompt variable
+                    deferredPrompt = null;
+                    // Hide the install button
+                    const installButton = document.getElementById('install-btn');
+                    if (installButton) {
+                        installButton.classList.add('hidden');
+                    }
+                });
+            }
+        }
+
+        window.addEventListener('appinstalled', () => {
+            // Hide the install button
+            const installButton = document.getElementById('install-btn');
+            if (installButton) {
+                installButton.classList.add('hidden');
+            }
+            console.log('PWA was installed');
+        });
+
         let currentView = 'overview'; // 'overview' | 'analysis'
         let currentSymbol = 'NIFTY';
 
@@ -752,8 +806,31 @@
         updateUI(); // First load
 
         // --- PWA Service Worker ---
+        // --- PWA Service Worker ---
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/static/sw.js');
+        }
+
+        // --- Install Prompt Logic ---
+        let deferredPrompt;
+        const installBtn = document.getElementById('install-btn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.classList.remove('hidden'); // Show button
+            installBtn.classList.add('flex');
+        });
+
+        async function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    deferredPrompt = null;
+                    installBtn.classList.add('hidden');
+                }
+            }
         }
     </script>
 </body>
