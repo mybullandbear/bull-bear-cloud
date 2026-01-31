@@ -25,7 +25,7 @@ echo.
 echo NOTE: A browser window or popup may ask for your GitHub credentials.
 echo.
 git push -u origin master
-git push -u origin main
+git push -u origin main --force
 
 echo.
 echo ========================================================
