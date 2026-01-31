@@ -396,11 +396,11 @@ def data_worker():
     error_count = 0
     
     while True:
-        try:
             # Periodic Cleanup (Every 24 hours)
             if (datetime.now() - last_cleanup).total_seconds() > 86400:
                 cleanup_old_data()
                 last_cleanup = datetime.now()
+
         # Reload creds from file every loop
         creds = load_token()
         
