@@ -189,7 +189,7 @@
                             class="relative inline-flex rounded-full h-2 w-2 {{ 'bg-emerald-500' if fyers_connected else 'bg-rose-600' }}"></span>
                     </span>
                     <span
-                        class="{{ 'text-emerald-400' if fyers_connected else 'text-rose-400' }} group-hover:text-white transition-colors">
+                        class="{{ 'text-emerald-400' if fyers_connected else 'text-rose-400' }} group-hover:text-white transition-colors hidden md:inline">
                         {{ 'Live (Logout)' if fyers_connected else 'Offline' }}
                     </span>
                 </a>
@@ -342,6 +342,23 @@
             </svg>
             <span class="text-[10px] font-bold tracking-wide">Deep Dive</span>
         </button>
+        <a href="{{ '/api/logout' if fyers_connected else '/connect' }}"
+            class="flex-1 py-3 flex flex-col items-center justify-center gap-1 text-slate-500 transition-colors">
+            <svg class="w-6 h-6 {{ 'text-emerald-500' if fyers_connected else 'text-rose-500' }}" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                {% if fyers_connected %}
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                {% else %}
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1">
+                </path>
+                {% endif %}
+            </svg>
+            <span
+                class="text-[10px] font-bold tracking-wide {{ 'text-emerald-500' if fyers_connected else 'text-rose-500' }}">{{
+                'Status' if fyers_connected else 'Login' }}</span>
+        </a>
     </nav>
 
     <!-- Unified Logic -->
