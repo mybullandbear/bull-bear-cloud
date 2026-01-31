@@ -14,6 +14,12 @@ self.addEventListener('install', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
+    // Bypass cache for API calls to ensure live data
+    if (e.request.url.includes('/api/')) {
+        e.respondWith(fetch(e.request));
+        return;
+    }
+
     e.respondWith(
         caches.match(e.request).then((response) => response || fetch(e.request))
     );
