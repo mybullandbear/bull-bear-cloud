@@ -286,23 +286,23 @@
                                     PUTS (Bearish)</th>
                             </tr>
                             <tr class="bg-slate-900 border-b border-slate-800">
-                                <th class="py-3 px-2">OI</th>
-                                <th class="py-3 px-2">OI Chg</th>
+                                <th class="py-3 px-2 hidden sm:table-cell">OI</th>
+                                <th class="py-3 px-2 hidden sm:table-cell">OI Chg</th>
                                 <th class="py-3 px-2 hidden md:table-cell text-slate-600">Vol</th>
                                 <th class="py-3 px-2 hidden lg:table-cell text-slate-600">IV</th>
                                 <th class="py-3 px-2 hidden lg:table-cell text-slate-600">Delta</th>
                                 <th class="py-3 px-2">Trend</th>
                                 <th class="py-3 px-2">LTP</th>
-                                <th class="py-3 px-2 border-r border-slate-800">Chg</th>
+                                <th class="py-3 px-2 border-r border-slate-800 hidden sm:table-cell">Chg</th>
 
                                 <th class="py-3 px-2 border-l border-slate-800">LTP</th>
-                                <th class="py-3 px-2">Chg</th>
+                                <th class="py-3 px-2 hidden sm:table-cell">Chg</th>
                                 <th class="py-3 px-2">Trend</th>
                                 <th class="py-3 px-2 hidden lg:table-cell text-slate-600">Delta</th>
                                 <th class="py-3 px-2 hidden lg:table-cell text-slate-600">IV</th>
                                 <th class="py-3 px-2 hidden md:table-cell text-slate-600">Vol</th>
-                                <th class="py-3 px-2">OI Chg</th>
-                                <th class="py-3 px-2">OI</th>
+                                <th class="py-3 px-2 hidden sm:table-cell">OI Chg</th>
+                                <th class="py-3 px-2 hidden sm:table-cell">OI</th>
                             </tr>
                         </thead>
                         <tbody id="full-chain-body" class="divide-y divide-slate-800/50 font-mono text-slate-300">
@@ -648,10 +648,20 @@
             const tbody = document.getElementById('full-chain-body');
             tbody.innerHTML = '';
 
-            chain.forEach(row => {
+            // 1. Find ATM Index
+            let atmIndex = chain.findIndex(row => row.is_atm);
+            if (atmIndex === -1) atmIndex = Math.floor(chain.length / 2);
+
+            // 2. Filter: 20 above, 20 below
+            const start = Math.max(0, atmIndex - 20);
+            const end = Math.min(chain.length, atmIndex + 21);
+            const filteredChain = chain.slice(start, end);
+
+            filteredChain.forEach(row => {
                 const isAtm = row.is_atm;
                 const tr = document.createElement('tr');
                 tr.className = isAtm ? 'atm-row font-bold text-white relative z-10' : 'hover:bg-slate-800/50 border-b border-slate-800/50 transition-colors';
+                if (isAtm) tr.id = "atm-row"; // Marker for scrolling
 
                 // Helper to format
                 const fmt = (n) => n ? n.toFixed(2) : '-';
@@ -660,35 +670,43 @@
 
                 // Calls
                 tr.innerHTML += `
-                    <td class="call-bg py-2 text-slate-200 border-r border-emerald-900/10 font-mono">${fmtInt(row.ce_oi)}</td>
-                    <td class="call-bg py-2 ${colorVal(row.ce_oich)} font-mono text-[11px]">${fmtInt(row.ce_oich)}</td>
+                    <td class="call-bg py-2 text-slate-200 border-r border-emerald-900/10 font-mono hidden sm:table-cell">${fmtInt(row.ce_oi)}</td>
+                    <td class="call-bg py-2 ${colorVal(row.ce_oich)} font-mono text-[11px] hidden sm:table-cell">${fmtInt(row.ce_oich)}</td>
                     <td class="call-bg py-2 text-slate-500 hidden md:table-cell text-[10px]">${fmtInt(row.ce_vol)}</td>
                     <td class="call-bg py-2 text-amber-200/60 hidden lg:table-cell font-mono">${fmt(row.ce_iv)}</td>
                     <td class="call-bg py-2 text-indigo-300/80 hidden lg:table-cell font-mono">${fmt(row.ce_delta)}</td>
                     <td class="call-bg py-2">${getTrendBadge(row.ce_trend)}</td>
                     <td class="call-bg py-2 font-bold text-emerald-200 text-sm border-l border-emerald-900/10 tracking-tight">${fmt(row.ce_ltp)}</td>
-                    <td class="call-bg py-2 ${colorVal(row.ce_ch)} text-[11px] border-r border-slate-700/30">${fmt(row.ce_ch)}</td>
+                    <td class="call-bg py-2 ${colorVal(row.ce_ch)} text-[11px] border-r border-slate-700/30 hidden sm:table-cell">${fmt(row.ce_ch)}</td>
                 `;
 
                 // Strike
                 tr.innerHTML += `
-                    <td class="py-2 font-bold bg-slate-900 text-white border-x border-slate-700 text-sm shadow-inner">${row.strike}</td>
+                    <td class="py-3 font-bold bg-slate-900 text-white border-x border-slate-700 text-sm shadow-inner sticky left-0 md:static z-20">${row.strike}</td>
                 `;
 
                 // Puts
                 tr.innerHTML += `
                     <td class="put-bg py-2 font-bold text-rose-200 text-sm border-l border-slate-700/30 tracking-tight">${fmt(row.pe_ltp)}</td>
-                    <td class="put-bg py-2 ${colorVal(row.pe_ch)} text-[11px] border-r border-rose-900/10">${fmt(row.pe_ch)}</td>
+                    <td class="put-bg py-2 ${colorVal(row.pe_ch)} text-[11px] border-r border-rose-900/10 hidden sm:table-cell">${fmt(row.pe_ch)}</td>
                     <td class="put-bg py-2">${getTrendBadge(row.pe_trend)}</td>
                     <td class="put-bg py-2 text-indigo-300/80 hidden lg:table-cell font-mono">${fmt(row.pe_delta)}</td>
                     <td class="put-bg py-2 text-amber-200/60 hidden lg:table-cell font-mono">${fmt(row.pe_iv)}</td>
                     <td class="put-bg py-2 text-slate-500 hidden md:table-cell text-[10px]">${fmtInt(row.pe_vol)}</td>
-                    <td class="put-bg py-2 ${colorVal(row.pe_oich)} font-mono text-[11px]">${fmtInt(row.pe_oich)}</td>
-                    <td class="put-bg py-2 text-slate-200 border-l border-rose-900/10 font-mono">${fmtInt(row.pe_oi)}</td>
+                    <td class="put-bg py-2 ${colorVal(row.pe_oich)} font-mono text-[11px] hidden sm:table-cell">${fmtInt(row.pe_oich)}</td>
+                    <td class="put-bg py-2 text-slate-200 border-l border-rose-900/10 font-mono hidden sm:table-cell">${fmtInt(row.pe_oi)}</td>
                 `;
 
                 tbody.appendChild(tr);
             });
+
+            // 3. Auto-Center ATM
+            setTimeout(() => {
+                const atmRow = document.getElementById('atm-row');
+                if (atmRow) {
+                    atmRow.scrollIntoView({ block: "center", behavior: "smooth" });
+                }
+            }, 500);
         }
 
         function getTrendBadge(trend) {
