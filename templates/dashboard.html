@@ -3,7 +3,11 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#020617">
     <title>MyBullAndBearFire</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
@@ -102,6 +106,16 @@
                 transform: translateY(0);
             }
         }
+        }
+
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
+
+        .active-nav-mobile {
+            color: #38bdf8;
+            /* sky-400 */
+        }
     </style>
 </head>
 
@@ -124,8 +138,9 @@
                     </span>
                 </div>
 
-                <!-- Nav Tabs -->
-                <nav class="flex space-x-1 bg-slate-900/50 p-1 rounded-lg border border-slate-800 backdrop-blur-sm">
+                <!-- Nav Tabs (Hidden on Mobile, Visible on Desktop) -->
+                <nav
+                    class="hidden md:flex space-x-1 bg-slate-900/50 p-1 rounded-lg border border-slate-800 backdrop-blur-sm">
                     <button onclick="switchView('overview')" id="btn-overview"
                         class="px-4 py-1.5 rounded-md text-sm font-medium transition-all shadow-sm">
                         Overview
@@ -300,7 +315,34 @@
                 </div>
             </div>
         </div>
+        </div>
+
+        <!-- Bottom Padding for Nav -->
+        <div class="h-20 shrink-0 md:hidden"></div>
     </main>
+
+    <!-- Bottom Mobile Navigation -->
+    <nav
+        class="fixed bottom-0 left-0 right-0 bg-slate-950/90 backdrop-blur-xl border-t border-slate-800 z-50 md:hidden flex justify-around items-center pb-safe box-border">
+        <button onclick="switchView('overview')" id="mob-btn-overview"
+            class="flex-1 py-3 flex flex-col items-center justify-center gap-1 text-slate-500 transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
+                </path>
+            </svg>
+            <span class="text-[10px] font-bold tracking-wide">Home</span>
+        </button>
+        <button onclick="switchView('analysis')" id="mob-btn-analysis"
+            class="flex-1 py-3 flex flex-col items-center justify-center gap-1 text-slate-500 transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z">
+                </path>
+            </svg>
+            <span class="text-[10px] font-bold tracking-wide">Deep Dive</span>
+        </button>
+    </nav>
 
     <!-- Unified Logic -->
     <script>
@@ -326,9 +368,12 @@
                 vAnalysis.classList.add('fade-in-up');
             }
 
-            // Toggle Buttons
+            // Toggle Buttons (Desktop)
             const btnOver = document.getElementById('btn-overview');
             const btnAnal = document.getElementById('btn-analysis');
+            // Toggle Buttons (Mobile)
+            const mobOver = document.getElementById('mob-btn-overview');
+            const mobAnal = document.getElementById('mob-btn-analysis');
 
             const activeClass = "px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 transform scale-105";
             const inactiveClass = "px-4 py-1.5 rounded-md text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-slate-800";
@@ -336,9 +381,19 @@
             if (view === 'overview') {
                 btnOver.className = activeClass;
                 btnAnal.className = inactiveClass;
+                // Mobile
+                mobOver.classList.add('text-indigo-400');
+                mobOver.classList.remove('text-slate-500');
+                mobAnal.classList.add('text-slate-500');
+                mobAnal.classList.remove('text-indigo-400');
             } else {
                 btnOver.className = inactiveClass;
                 btnAnal.className = activeClass;
+                // Mobile
+                mobAnal.classList.add('text-indigo-400');
+                mobAnal.classList.remove('text-slate-500');
+                mobOver.classList.add('text-slate-500');
+                mobOver.classList.remove('text-indigo-400');
             }
             updateUI();
         }
