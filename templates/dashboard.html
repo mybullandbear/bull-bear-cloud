@@ -8,6 +8,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#020617">
+    <link rel="manifest" href="/static/manifest.json">
     <title>MyBullAndBearFire</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
@@ -749,6 +750,11 @@
         setInterval(() => window.location.reload(), 300000); // Reload every 5 mins
 
         updateUI(); // First load
+
+        // --- PWA Service Worker ---
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js');
+        }
     </script>
 </body>
 
