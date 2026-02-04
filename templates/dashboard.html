@@ -32,6 +32,7 @@
                 text.innerText = `${msg} (Line ${line})`;
             }
             console.error("Global Error:", msg, error);
+            alert(`Global Error: ${msg} (Line ${line})`); // Force visible alert
             return false;
         };
 
@@ -593,7 +594,6 @@
                 if (btnAnal) btnAnal.className = activeClass;
                 mobAnal.classList.add('text-indigo-400');
             } else if (view === 'charts') {
-                if (btnCharts) btnAnal.className = activeClass; // This was a bug, should be btnCharts
                 if (btnCharts) btnCharts.className = activeClass;
                 mobCharts.classList.add('text-indigo-400');
             } else if (view === 'signals') {
@@ -635,6 +635,8 @@
                             } else if (currentView === 'charts') {
                                 if (typeof renderAdvancedCharts === 'function') {
                                     renderAdvancedCharts(activeChartSymbol);
+                                } else {
+                                    alert("Critical Error: renderAdvancedCharts function is MISSING. Script likely crashed.");
                                 }
                             }
                         }
@@ -642,6 +644,7 @@
                 }
             } catch (e) {
                 console.error("Fetch Error:", e);
+                alert("Data Fetch Error: " + e.message);
             }
         }
 
