@@ -821,6 +821,77 @@
                 }
             }
         }
+        function renderSignalMatrix(data) {
+            const tbody = document.getElementById('signal-matrix-body');
+            const logContainer = document.getElementById('signals-container');
+            if (!tbody) return;
+
+            let rows = '';
+            let logs = '';
+
+            ['NIFTY', 'BANKNIFTY', 'FINNIFTY'].forEach(sym => {
+                const d = data[sym];
+                if (!d || !d.matrix) return;
+                const m = d.matrix;
+
+                // Determine Overall Sentiment
+                let bullCount = 0;
+                let bearCount = 0;
+                [m.pcr.status, m.max_pain.status, m.oi_flow.status, m.trend.status].forEach(s => {
+                    if (s === 'Bullish') bullCount++;
+                    if (s === 'Bearish') bearCount++;
+                });
+
+                let action = '<span class="text-slate-500 font-mono">NEUTRAL</span>';
+                let rowClass = 'hover:bg-slate-900/50 transition-colors';
+
+                if (bullCount >= 2 && bearCount === 0) {
+                    action = '<span class="text-emerald-400 font-bold bg-emerald-950/40 px-2 py-1 rounded border border-emerald-500/30 glow-text-sm">BUY CALL</span>';
+                    rowClass = 'bg-emerald-950/10 hover:bg-emerald-950/20 transition-colors';
+                } else if (bearCount >= 2 && bullCount === 0) {
+                    action = '<span class="text-rose-400 font-bold bg-rose-950/40 px-2 py-1 rounded border border-rose-500/30 glow-text-sm">BUY PUT</span>';
+                    rowClass = 'bg-rose-950/10 hover:bg-rose-950/20 transition-colors';
+                }
+
+                // Helper for cells
+                const badge = (status, val) => {
+                    let col = 'text-slate-400';
+                    if (status === 'Bullish') col = 'text-emerald-400 font-medium';
+                    if (status === 'Bearish') col = 'text-rose-400 font-medium';
+                    return `<div class="${col}">${val}</div><div class="text-[10px] text-slate-600 uppercase">${status}</div>`;
+                };
+
+                rows += `
+                    <tr class="${rowClass} border-b border-slate-800 last:border-0">
+                        <td class="p-4 font-bold text-white">${sym} <div class="text-xs text-slate-500">${d.spot}</div></td>
+                        <td class="p-4">${badge(m.pcr.status, m.pcr.val)}</td>
+                        <td class="p-4">${badge(m.max_pain.status, m.max_pain.val)}</td>
+                        <td class="p-4">${badge(m.oi_flow.status, m.oi_flow.val)}</td>
+                        <td class="p-4">${badge(m.trend.status, m.trend.val)}</td>
+                        <td class="p-4 text-right">${action}</td>
+                    </tr>
+                 `;
+
+                // Accumulate logs
+                if (d.alerts && d.alerts.length > 0) {
+                    d.alerts.forEach(alert => {
+                        const isBull = alert.type === 'BULLISH';
+                        const color = isBull ? 'emerald' : 'rose';
+                        logs += `
+                            <div class="glass border-l-4 border-${color}-500 p-4 rounded-r-lg shadow-sm flex justify-between items-center group">
+                                <div>
+                                    <h4 class="font-bold text-slate-200 text-sm"><span class="text-${color}-400 mr-2">[${sym}]</span> ${alert.strategy}</h4>
+                                    <p class="text-xs text-slate-400 mt-1 opacity-80 group-hover:opacity-100 transition-opacity">${alert.desc}</p>
+                                </div>
+                                <span class="px-2 py-1 bg-${color}-500/10 text-${color}-400 text-[10px] font-bold rounded uppercase border border-${color}-500/20">${alert.type}</span>
+                            </div>`;
+                    });
+                }
+            });
+
+            tbody.innerHTML = rows;
+            logContainer.innerHTML = logs || '<div class="text-slate-500 text-sm text-center italic py-2">No active alerts.</div>';
+        }
     </script>
 </body>
 
