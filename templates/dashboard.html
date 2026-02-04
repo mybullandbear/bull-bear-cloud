@@ -1267,12 +1267,12 @@
 
 
         async function renderAdvancedCharts(symbol) {
-            alert("DEBUG: Entering renderAdvancedCharts for " + symbol);
+            // alert("DEBUG: Entering renderAdvancedCharts for " + symbol);
             try {
                 const res = await fetch(`/api/oi_history?symbol=${symbol}`);
                 let data = await res.json();
 
-                alert(`DEBUG: Fetched ${data ? data.length : 0} records for ${symbol}`);
+                // alert(`DEBUG: Fetched ${data ? data.length : 0} records for ${symbol}`);
 
                 if (!data) data = [];
 
@@ -1308,7 +1308,7 @@
                 const pcr = getArr('pcr');
 
                 // --- 2. Create/Update Charts ---
-                alert("DEBUG: Starting Chart Render Loop");
+                // alert("DEBUG: Starting Chart Render Loop");
 
                 // A. Total OI
                 createOrUpdateChart('chart-total-oi', 'total',
@@ -1316,7 +1316,7 @@
                     ['#10b981', '#f43f5e', 'rgba(251, 191, 36, 0.15)'], true
                 );
 
-                alert("DEBUG: Rendered Total OI");
+                // alert("DEBUG: Rendered Total OI");
 
                 // B. Change OI
                 createOrUpdateChart('chart-change-oi', 'change',
@@ -1336,7 +1336,7 @@
                     ['#a855f7', 'rgba(251, 191, 36, 0.15)'], true
                 );
 
-                alert("DEBUG: All Charts Rendered");
+                // alert("DEBUG: All Charts Rendered");
 
             } catch (e) {
                 console.error("Chart Render Error", e);
@@ -1347,7 +1347,7 @@
         function createOrUpdateChart(id, key, series, colors, dualAxis) {
             const el = document.getElementById(id);
             if (!el) {
-                alert(`DEBUG: Missing Container #${id}`);
+                // alert(`DEBUG: Missing Container #${id}`);
                 return;
             }
 
