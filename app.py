@@ -76,6 +76,10 @@ def init_dbs():
     for symbol, db_path in DB_FILES.items():
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
+        
+        # PERFORMANCE: Enable Write-Ahead Logging (WAL) for concurrency
+        cursor.execute("PRAGMA journal_mode=WAL;")
+        
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS market_history (
                 timestamp DATETIME,
