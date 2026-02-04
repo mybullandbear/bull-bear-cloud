@@ -1077,15 +1077,13 @@
         // --- Signal Cockpit (Gauges) ---
         async function updateSignals() {
             try {
-                // We fetch the same API but now it returns the 'matrix' which is our 'signal_card'
-                // Actually wait, existing logic fetches 'market_data' via /api/option_chain
                 const res = await fetch('/api/option_chain');
                 const data = await res.json();
 
                 if (data) {
                     ['NIFTY', 'BANKNIFTY', 'FINNIFTY'].forEach(sym => {
-                        if (data[sym] && data[sym].matrix) {
-                            renderSignalGauge(sym, data[sym].matrix);
+                        if (data[sym]) {
+                            renderSignalGauge(sym, data[sym]);
                         }
                     });
                 }
@@ -1096,13 +1094,15 @@
 
         let signalCharts = {};
 
-        function renderSignalGauge(symbol, card) {
-            const containerId = `#signal-${symbol}`; // We need to add these div IDs in HTML
+        function renderSignalGauge(symbol, data) {
+            const card = data.matrix; // The score/action object
+            if (!card) return;
+
+            const containerId = `#signal-${symbol}`;
             const el = document.querySelector(containerId);
             if (!el) return;
 
             // Normalize Score (-10 to 10) -> (0 to 100) for Gauge
-            // -10 = 0%, 0 = 50%, 10 = 100%
             const seriesVal = ((card.score + 10) / 20) * 100;
 
             // Color Logic
@@ -1112,58 +1112,42 @@
             else if (card.score <= -5) color = '#f43f5e'; // Rose
             else if (card.score <= -2) color = '#f97316'; // Orange
 
+            // 1. Render Main Gauge (ApexChart)
             const options = {
                 series: [seriesVal],
                 chart: {
-                    height: 250,
+                    height: 220, // Slightly compact
                     type: 'radialBar',
                     fontFamily: 'Outfit, sans-serif',
-                    animations: { enabled: true, speed: 800 }
                 },
                 plotOptions: {
                     radialBar: {
                         startAngle: -90,
                         endAngle: 90,
-                        track: {
-                            background: "#334155",
-                            strokeWidth: '97%',
-                            margin: 5,
-                        },
+                        track: { background: "#334155", strokeWidth: '97%', margin: 5 },
                         dataLabels: {
                             show: true,
-                            name: {
-                                show: true,
-                                fontSize: '14px',
-                                color: '#94a3b8',
-                                offsetY: -10
-                            },
-                            value: {
-                                show: false
-                            }
+                            name: { show: true, fontSize: '14px', color: '#94a3b8', offsetY: -10 },
+                            value: { show: false }
                         }
                     }
                 },
                 fill: {
                     type: 'gradient',
                     gradient: {
-                        shade: 'dark',
-                        type: 'horizontal',
-                        shadeIntensity: 0.5,
-                        gradientToColors: [color],
-                        inverseColors: true,
-                        opacityFrom: 1,
-                        opacityTo: 1,
-                        stops: [0, 100]
+                        shade: 'dark', map: 'horizontal', shadeIntensity: 0.5,
+                        gradientToColors: [color], inverseColors: true,
+                        opacityFrom: 1, opacityTo: 1, stops: [0, 100]
                     }
                 },
                 stroke: { lineCap: 'round' },
-                labels: [card.action], // The text inside
+                labels: [card.action],
             };
 
             if (signalCharts[symbol]) {
                 signalCharts[symbol].updateOptions({
                     labels: [card.action],
-                    fill: { gradient: { gradientToColors: [color] } } // Update color dynamically
+                    fill: { gradient: { gradientToColors: [color] } }
                 });
                 signalCharts[symbol].updateSeries([seriesVal]);
             } else {
@@ -1171,14 +1155,49 @@
                 signalCharts[symbol].render();
             }
 
-            // Update Reasons Text below chart
-            const reasonEl = document.querySelector(`#reasons-${symbol}`);
-            if (reasonEl) {
-                reasonEl.innerHTML = card.reasons.map(r =>
+            // 2. Render Flight Deck (Mini Meters)
+            const reasonsDiv = document.querySelector(`#reasons-${symbol}`);
+            if (reasonsDiv) {
+                // Calculate PCR Meter (0.5 to 1.5) -> (0% to 100%)
+                const pcr = data.pcr || 0;
+                const pcrPercent = Math.min(Math.max((pcr - 0.5) * 100, 0), 100);
+                const pcrColor = pcr >= 1 ? 'bg-emerald-500' : 'bg-rose-500';
+
+                // Max Pain Distance
+                const spot = data.spot || 0;
+                const mp = data.max_pain || 0;
+                const dist = (spot - mp).toFixed(0);
+                const distColor = dist > 0 ? 'text-emerald-400' : 'text-rose-400';
+
+                reasonsDiv.innerHTML = `
+                    <div class="grid grid-cols-2 gap-2 w-full mt-[-20px] mb-2 px-2">
+                        <!-- PCR Meter -->
+                        <div class="bg-slate-800/50 p-2 rounded border border-white/5">
+                            <div class="flex justify-between text-[10px] text-slate-400 mb-1">
+                                <span>PCR</span>
+                                <span class="font-bold text-white">${pcr}</span>
+                            </div>
+                            <div class="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                                <div class="h-full ${pcrColor} transition-all duration-500" style="width: ${pcrPercent}%"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Max Pain -->
+                        <div class="bg-slate-800/50 p-2 rounded border border-white/5 flex flex-col justify-center">
+                            <div class="text-[9px] text-slate-500 uppercase">Max Pain Diff</div>
+                            <div class="text-xs font-bold font-mono ${distColor}">${dist > 0 ? '+' : ''}${dist}</div>
+                        </div>
+                    </div>
+
+                    <!-- Primary Reasons -->
+                    <div class="flex flex-col gap-1 w-full px-2">
+                         ${card.reasons.map(r =>
                     `<div class="text-[10px] text-slate-400 flex items-center gap-1">
-                        <span class="w-1.5 h-1.5 rounded-full bg-${card.color}-500"></span> ${r}
-                     </div>`
-                ).join('');
+                                <span class="w-1.5 h-1.5 rounded-full bg-${card.color}-500"></span> ${r}
+                             </div>`
+                ).join('')}
+                    </div>
+                `;
             }
         }
 
