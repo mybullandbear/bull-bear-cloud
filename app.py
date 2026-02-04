@@ -39,6 +39,15 @@ def init_dbs():
     for symbol, db_path in DB_FILES.items():
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
+        
+        # SCHEMA MIGRATION CHECK: Option Chain
+        try:
+            cursor.execute("SELECT timestamp FROM option_chain LIMIT 1")
+        except sqlite3.OperationalError:
+            print(f"MIGRATION: Dropping old option_chain table for {symbol}")
+            cursor.execute("DROP TABLE IF EXISTS option_chain")
+            conn.commit()
+            
         # Create table if not exists
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS option_chain (
@@ -61,6 +70,15 @@ def init_dbs():
     for symbol, db_path in DB_FILES.items():
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
+        
+        # SCHEMA MIGRATION CHECK: Signals
+        try:
+            cursor.execute("SELECT timestamp FROM signals LIMIT 1")
+        except sqlite3.OperationalError:
+            print(f"MIGRATION: Dropping old signals table for {symbol}")
+            cursor.execute("DROP TABLE IF EXISTS signals")
+            conn.commit()
+
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS signals (
                 timestamp DATETIME,

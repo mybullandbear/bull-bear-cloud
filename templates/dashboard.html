@@ -14,7 +14,58 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
         rel="stylesheet">
+    <!-- Error Banner -->
+    <div id="error-banner"
+        class="fixed top-0 left-0 right-0 bg-rose-600 text-white p-2 text-center text-xs font-bold hidden z-[100]">
+        An error occurred: <span id="error-text"></span>
+    </div>
+
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script>
+        // Global Error Handler
+        window.onerror = function (msg, url, line, col, error) {
+            const banner = document.getElementById('error-banner');
+            const text = document.getElementById('error-text');
+            if (banner && text) {
+                banner.classList.remove('hidden');
+                text.innerText = `${msg} (Line ${line})`;
+            }
+            console.error("Global Error:", msg, error);
+            return false;
+        };
+
+        // Check Dependencies
+        if (typeof ApexCharts === 'undefined') {
+            document.getElementById('error-banner').classList.remove('hidden');
+            document.getElementById('error-text').innerText = "Failed to load ApexCharts Library. Check internet connection.";
+        }
+
+        let currentView = 'overview';
+        let currentSymbol = 'NIFTY';
+
+        async function switchView(viewName) {
+            try {
+                // Hide all views
+                ['view-overview', 'view-analysis', 'view-signals', 'view-charts'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.classList.add('hidden');
+                });
+
+                // Show target
+                const target = document.getElementById('view-' + viewName);
+                if (target) {
+                    target.classList.remove('hidden');
+                    currentView = viewName;
+
+                    // Trigger immediate update
+                    updateUI();
+                }
+            } catch (e) {
+                console.error("Switch View Error:", e);
+            }
+        }
+    </script>
     <script>
         tailwind.config = {
             theme: {
