@@ -404,39 +404,54 @@
                 </div>
             </div>
 
-            <!-- Chart 1: NIFTY -->
-            <div class="mb-6">
-                <h3 class="text-sm font-bold text-slate-300 mb-2 pl-2 border-l-2 border-indigo-500">
-                    NIFTY</h3>
-                <div
-                    class="rounded-xl border border-slate-800 shadow-xl bg-slate-900/60 p-2 h-64 overflow-hidden relative backdrop-blur-sm">
-                    <div id="chart-NIFTY" class="w-full h-full"></div>
+            <div id="view-charts" class="absolute inset-0 p-3 overflow-y-auto hidden flex flex-col pt-20 pb-24">
+                <div class="flex justify-between items-end mb-6 px-1">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white">Market Trends</h2>
+                        <p class="text-xs text-slate-500 font-mono">OI Change (Intraday)</p>
+                    </div>
+                    <!-- Legend -->
+                    <div
+                        class="flex gap-4 text-[10px] font-mono bg-slate-900/50 p-2 rounded-lg border border-slate-800">
+                        <div class="flex items-center gap-1"><span
+                                class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/30"></span>
+                            Put (Bull)</div>
+                        <div class="flex items-center gap-1"><span
+                                class="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-lg shadow-rose-500/30"></span> Call
+                            (Bear)</div>
+                    </div>
+                </div>
+
+                <!-- Chart 1: NIFTY -->
+                <div class="mb-6">
+                    <h3 class="text-sm font-bold text-slate-300 mb-2 pl-2 border-l-2 border-indigo-500">NIFTY</h3>
+                    <div
+                        class="rounded-xl border border-slate-800 shadow-xl bg-slate-900/60 p-2 h-64 overflow-hidden relative backdrop-blur-sm">
+                        <div id="chart-NIFTY" class="w-full h-full"></div>
+                    </div>
+                </div>
+
+                <!-- Chart 2: BANKNIFTY -->
+                <div class="mb-6">
+                    <h3 class="text-sm font-bold text-slate-300 mb-2 pl-2 border-l-2 border-teal-500">BANKNIFTY</h3>
+                    <div
+                        class="rounded-xl border border-slate-800 shadow-xl bg-slate-900/60 p-2 h-64 overflow-hidden relative backdrop-blur-sm">
+                        <div id="chart-BANKNIFTY" class="w-full h-full"></div>
+                    </div>
+                </div>
+
+                <!-- Chart 3: FINNIFTY -->
+                <div class="mb-6">
+                    <h3 class="text-sm font-bold text-slate-300 mb-2 pl-2 border-l-2 border-emerald-500">FINNIFTY</h3>
+                    <div
+                        class="rounded-xl border border-slate-800 shadow-xl bg-slate-900/60 p-2 h-64 overflow-hidden relative backdrop-blur-sm">
+                        <div id="chart-FINNIFTY" class="w-full h-full"></div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Chart 2: BANKNIFTY -->
-            <div class="mb-6">
-                <h3 class="text-sm font-bold text-slate-300 mb-2 pl-2 border-l-2 border-teal-500">
-                    BANKNIFTY</h3>
-                <div
-                    class="rounded-xl border border-slate-800 shadow-xl bg-slate-900/60 p-2 h-64 overflow-hidden relative backdrop-blur-sm">
-                    <div id="chart-BANKNIFTY" class="w-full h-full"></div>
-                </div>
-            </div>
-
-            <!-- Chart 3: FINNIFTY -->
-            <div class="mb-6">
-                <h3 class="text-sm font-bold text-slate-300 mb-2 pl-2 border-l-2 border-emerald-500">
-                    FINNIFTY</h3>
-                <div
-                    class="rounded-xl border border-slate-800 shadow-xl bg-slate-900/60 p-2 h-64 overflow-hidden relative backdrop-blur-sm">
-                    <div id="chart-FINNIFTY" class="w-full h-full"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Bottom Padding for Nav -->
-        <div class="h-20 shrink-0 md:hidden"></div>
+            <!-- Bottom Padding for Nav -->
+            <div class="h-20 shrink-0 md:hidden"></div>
     </main>
 
     <!-- Bottom Mobile Navigation -->
