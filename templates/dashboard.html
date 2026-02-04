@@ -603,6 +603,9 @@
         }
 
         // --- Data Fetching ---
+        let activeChartSymbol = 'NIFTY'; // Hoisted
+        let advancedCharts = {}; // Hoisted
+
         async function updateUI() {
             currentSymbol = document.getElementById('symbolSelect').value;
 
@@ -630,7 +633,9 @@
                                 updateSignals(); // Gauges
                                 fetchSignalHistory(); // Feed
                             } else if (currentView === 'charts') {
-                                renderAllCharts();
+                                if (typeof renderAdvancedCharts === 'function') {
+                                    renderAdvancedCharts(activeChartSymbol);
+                                }
                             }
                         }
                     }
@@ -1228,8 +1233,7 @@
         updateSignals();
 
         // --- Charting ---
-        let activeChartSymbol = 'NIFTY';
-        let advancedCharts = {};
+        // Variables hoisted to top
 
         function switchChartSymbol(sym) {
             activeChartSymbol = sym;
@@ -1242,152 +1246,152 @@
             renderAdvancedCharts(sym);
         }
 
-        async function fetchAndRenderChart(symbol) {
-            try {
-                const res = await fetch(`/api/oi_history?symbol=${symbol}`);
-                const data = await res.json();
+        // Legacy fetchAndRenderChart (Removed)
+        try {
+            const res = await fetch(`/api/oi_history?symbol=${symbol}`);
+            const data = await res.json();
 
-                const containerId = `#chart-${symbol}`;
-                const container = document.querySelector(containerId);
+            const containerId = `#chart-${symbol}`;
+            const container = document.querySelector(containerId);
 
-                if (!data) data = []; // Allow empty data to render structure
+            if (!data) data = []; // Allow empty data to render structure
 
-                // Remove early return, logic handles empty array gracefully
-                // if (!data || data.length === 0) { ... }
+            // Remove early return, logic handles empty array gracefully
+            // if (!data || data.length === 0) { ... }
 
-                // --- Pre-Process Data for Full Day Axis (09:15 - 15:30) ---
-                // Generate all minute slots
-                const fullTimeSlots = [];
-                let start = new Date();
-                start.setHours(9, 15, 0, 0);
-                const end = new Date();
-                end.setHours(15, 30, 0, 0);
+            // --- Pre-Process Data for Full Day Axis (09:15 - 15:30) ---
+            // Generate all minute slots
+            const fullTimeSlots = [];
+            let start = new Date();
+            start.setHours(9, 15, 0, 0);
+            const end = new Date();
+            end.setHours(15, 30, 0, 0);
 
-                while (start <= end) {
-                    const hh = start.getHours().toString().padStart(2, '0');
-                    const mm = start.getMinutes().toString().padStart(2, '0');
-                    fullTimeSlots.push(`${hh}:${mm}`);
-                    start.setMinutes(start.getMinutes() + 1);
-                }
-
-                // Map fetched data to full timeline
-                const dataMap = {};
-                data.forEach(d => {
-                    const t = d.time.split(' ')[1].substring(0, 5);
-                    dataMap[t] = d;
-                });
-
-                const categories = fullTimeSlots;
-                const peChg = fullTimeSlots.map(t => dataMap[t] ? dataMap[t].pe_change : null);
-                const ceChg = fullTimeSlots.map(t => dataMap[t] ? dataMap[t].ce_change : null);
-                const prices = fullTimeSlots.map(t => dataMap[t] ? dataMap[t].price : null);
-
-                const options = {
-                    series: [
-                        { name: 'Put (Bull)', type: 'line', data: peChg },
-                        { name: 'Call (Bear)', type: 'line', data: ceChg },
-                        { name: 'Spot Price', type: 'area', data: prices }
-                    ],
-                    chart: {
-                        height: '100%',
-                        type: 'line',
-                        fontFamily: 'Outfit, sans-serif',
-                        background: 'transparent',
-                        toolbar: { show: false },
-                        animations: { enabled: true, easing: 'easeinout', speed: 800 }
-                    },
-                    colors: ['#34d399', '#f43f5e', '#fbbf24'], // Emerald, Rose, Amber (Spot)
-                    stroke: { curve: 'smooth', width: [2, 2, 4], dashArray: [0, 0, 0] },
-                    fill: {
-                        type: ['solid', 'solid', 'solid'], // Solid lines for all
-                        opacity: [1, 1, 1]
-                    },
-                    dataLabels: { enabled: false },
-                    grid: {
-                        borderColor: '#334155',
-                        strokeDashArray: 3,
-                        padding: { top: 10, right: 30, bottom: 10, left: 20 }
-                    },
-                    xaxis: {
-                        categories: categories,
-                        labels: {
-                            show: true,
-                            style: { colors: '#94a3b8', fontSize: '11px', fontFamily: 'JetBrains Mono' },
-                            rotate: 0,
-                            hideOverlappingLabels: true,
-                            formatter: function (val) {
-                                // Only show 09:15, 10:00, 11:00... 15:30
-                                if (!val) return '';
-                                if (val === '09:15' || val === '15:30') return val;
-                                if (val.endsWith(':00')) return val; // Hourly ticks
-                                return '';
-                            }
-                        },
-                        axisBorder: { show: false },
-                        axisTicks: { show: false },
-                        tooltip: { enabled: false },
-                        tickAmount: undefined // Let formatter handle it
-                    },
-                    yaxis: [
-                        {
-                            seriesName: 'Put (Bull)',
-                            show: true,
-                            labels: {
-                                style: { colors: '#94a3b8', fontSize: '10px', fontFamily: 'JetBrains Mono' },
-                                formatter: (val) => val ? (val / 1000).toFixed(0) + 'k' : ''
-                            },
-                        },
-                        {
-                            seriesName: 'Call (Bear)',
-                            show: false,
-                        },
-                        {
-                            seriesName: 'Spot Price',
-                            opposite: true,
-                            show: true,
-                            labels: {
-                                style: { colors: '#fbbf24', fontSize: '11px', fontFamily: 'JetBrains Mono', fontWeight: 'bold' },
-                                formatter: (val) => val ? val.toFixed(0) : ''
-                            }
-                        }
-                    ],
-                    theme: { mode: 'dark' },
-                    legend: { show: false },
-                    tooltip: {
-                        theme: 'dark',
-                        shared: true,
-                        intersect: false,
-                        x: { show: true },
-                        y: {
-                            formatter: function (y, { seriesIndex, w }) {
-                                if (y === null) return "";
-                                if (seriesIndex === 2) return y.toFixed(2); // Price
-                                return (y / 1000).toFixed(1) + "k";
-                            }
-                        },
-                        style: { fontSize: '12px', fontFamily: 'Outfit, sans-serif' },
-                        marker: { show: true },
-                        fixed: { enabled: false, position: 'topRight', offsetX: 0, offsetY: 0 }
-                    }
-                };
-
-                if (charts[symbol]) {
-                    charts[symbol].updateOptions({
-                        xaxis: { categories: categories }
-                    });
-                    charts[symbol].updateSeries([
-                        { data: peChg },
-                        { data: ceChg },
-                        { data: prices }
-                    ]);
-                } else {
-                    charts[symbol] = new ApexCharts(document.querySelector(containerId), options);
-                    charts[symbol].render();
-                }
-
-            } catch (e) {
-                console.error(`Chart Error ${symbol}:`, e);
+            while (start <= end) {
+                const hh = start.getHours().toString().padStart(2, '0');
+                const mm = start.getMinutes().toString().padStart(2, '0');
+                fullTimeSlots.push(`${hh}:${mm}`);
+                start.setMinutes(start.getMinutes() + 1);
             }
+
+            // Map fetched data to full timeline
+            const dataMap = {};
+            data.forEach(d => {
+                const t = d.time.split(' ')[1].substring(0, 5);
+                dataMap[t] = d;
+            });
+
+            const categories = fullTimeSlots;
+            const peChg = fullTimeSlots.map(t => dataMap[t] ? dataMap[t].pe_change : null);
+            const ceChg = fullTimeSlots.map(t => dataMap[t] ? dataMap[t].ce_change : null);
+            const prices = fullTimeSlots.map(t => dataMap[t] ? dataMap[t].price : null);
+
+            const options = {
+                series: [
+                    { name: 'Put (Bull)', type: 'line', data: peChg },
+                    { name: 'Call (Bear)', type: 'line', data: ceChg },
+                    { name: 'Spot Price', type: 'area', data: prices }
+                ],
+                chart: {
+                    height: '100%',
+                    type: 'line',
+                    fontFamily: 'Outfit, sans-serif',
+                    background: 'transparent',
+                    toolbar: { show: false },
+                    animations: { enabled: true, easing: 'easeinout', speed: 800 }
+                },
+                colors: ['#34d399', '#f43f5e', '#fbbf24'], // Emerald, Rose, Amber (Spot)
+                stroke: { curve: 'smooth', width: [2, 2, 4], dashArray: [0, 0, 0] },
+                fill: {
+                    type: ['solid', 'solid', 'solid'], // Solid lines for all
+                    opacity: [1, 1, 1]
+                },
+                dataLabels: { enabled: false },
+                grid: {
+                    borderColor: '#334155',
+                    strokeDashArray: 3,
+                    padding: { top: 10, right: 30, bottom: 10, left: 20 }
+                },
+                xaxis: {
+                    categories: categories,
+                    labels: {
+                        show: true,
+                        style: { colors: '#94a3b8', fontSize: '11px', fontFamily: 'JetBrains Mono' },
+                        rotate: 0,
+                        hideOverlappingLabels: true,
+                        formatter: function (val) {
+                            // Only show 09:15, 10:00, 11:00... 15:30
+                            if (!val) return '';
+                            if (val === '09:15' || val === '15:30') return val;
+                            if (val.endsWith(':00')) return val; // Hourly ticks
+                            return '';
+                        }
+                    },
+                    axisBorder: { show: false },
+                    axisTicks: { show: false },
+                    tooltip: { enabled: false },
+                    tickAmount: undefined // Let formatter handle it
+                },
+                yaxis: [
+                    {
+                        seriesName: 'Put (Bull)',
+                        show: true,
+                        labels: {
+                            style: { colors: '#94a3b8', fontSize: '10px', fontFamily: 'JetBrains Mono' },
+                            formatter: (val) => val ? (val / 1000).toFixed(0) + 'k' : ''
+                        },
+                    },
+                    {
+                        seriesName: 'Call (Bear)',
+                        show: false,
+                    },
+                    {
+                        seriesName: 'Spot Price',
+                        opposite: true,
+                        show: true,
+                        labels: {
+                            style: { colors: '#fbbf24', fontSize: '11px', fontFamily: 'JetBrains Mono', fontWeight: 'bold' },
+                            formatter: (val) => val ? val.toFixed(0) : ''
+                        }
+                    }
+                ],
+                theme: { mode: 'dark' },
+                legend: { show: false },
+                tooltip: {
+                    theme: 'dark',
+                    shared: true,
+                    intersect: false,
+                    x: { show: true },
+                    y: {
+                        formatter: function (y, { seriesIndex, w }) {
+                            if (y === null) return "";
+                            if (seriesIndex === 2) return y.toFixed(2); // Price
+                            return (y / 1000).toFixed(1) + "k";
+                        }
+                    },
+                    style: { fontSize: '12px', fontFamily: 'Outfit, sans-serif' },
+                    marker: { show: true },
+                    fixed: { enabled: false, position: 'topRight', offsetX: 0, offsetY: 0 }
+                }
+            };
+
+            if (charts[symbol]) {
+                charts[symbol].updateOptions({
+                    xaxis: { categories: categories }
+                });
+                charts[symbol].updateSeries([
+                    { data: peChg },
+                    { data: ceChg },
+                    { data: prices }
+                ]);
+            } else {
+                charts[symbol] = new ApexCharts(document.querySelector(containerId), options);
+                charts[symbol].render();
+            }
+
+        } catch (e) {
+            console.error(`Chart Error ${symbol}:`, e);
+        }
         }
         async function renderAdvancedCharts(symbol) {
             try {
