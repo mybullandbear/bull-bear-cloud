@@ -51,8 +51,6 @@ def init_dbs():
         ''')
         conn.commit()
         conn.close()
-        conn.commit()
-        conn.close()
         print(f"DEBUG: Initialized DB for {symbol} at {db_path}", flush=True)
 
     # Create Signals DB (Global or per symbol? Per symbol is consistent)
@@ -111,9 +109,6 @@ def save_to_db(symbol, chain_data):
         conn.close()
         print(f"DEBUG: Saved {len(records)} records to {symbol} DB", flush=True)
         
-    except Exception as e:
-        print(f"Error saving to DB for {symbol}: {e}", flush=True)
-
     except Exception as e:
         print(f"Error saving to DB for {symbol}: {e}", flush=True)
 
