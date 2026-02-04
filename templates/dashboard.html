@@ -1031,10 +1031,32 @@
                     return;
                 }
 
-                const times = data.map(d => d.time.split(' ')[1].substring(0, 5)); // HH:MM
-                const ceChg = data.map(d => d.ce_change);
-                const peChg = data.map(d => d.pe_change);
-                const prices = data.map(d => d.price);
+                // --- Pre-Process Data for Full Day Axis (09:15 - 15:30) ---
+                // Generate all minute slots
+                const fullTimeSlots = [];
+                let start = new Date();
+                start.setHours(9, 15, 0, 0);
+                const end = new Date();
+                end.setHours(15, 30, 0, 0);
+
+                while (start <= end) {
+                    const hh = start.getHours().toString().padStart(2, '0');
+                    const mm = start.getMinutes().toString().padStart(2, '0');
+                    fullTimeSlots.push(`${hh}:${mm}`);
+                    start.setMinutes(start.getMinutes() + 1);
+                }
+
+                // Map fetched data to full timeline
+                const dataMap = {};
+                data.forEach(d => {
+                    const t = d.time.split(' ')[1].substring(0, 5);
+                    dataMap[t] = d;
+                });
+
+                const categories = fullTimeSlots;
+                const peChg = fullTimeSlots.map(t => dataMap[t] ? dataMap[t].pe_change : null);
+                const ceChg = fullTimeSlots.map(t => dataMap[t] ? dataMap[t].ce_change : null);
+                const prices = fullTimeSlots.map(t => dataMap[t] ? dataMap[t].price : null);
 
                 const options = {
                     series: [
@@ -1045,65 +1067,83 @@
                     chart: {
                         height: '100%',
                         type: 'line',
-                        toolbar: { show: false },
-                        animations: { enabled: false }, // disable for perf
+                        fontFamily: 'Outfit, sans-serif',
                         background: 'transparent',
-                        fontFamily: 'Outfit, sans-serif'
+                        toolbar: { show: false },
+                        animations: { enabled: true, easing: 'easeinout', speed: 800 }
                     },
-                    colors: ['#10b981', '#f43f5e', '#6366f1'], // Emerald, Rose, Indigo
+                    colors: ['#34d399', '#f43f5e', '#818cf8'], // Brighter Emerald, Rose, Indigo
                     stroke: { curve: 'smooth', width: [2, 2, 3], dashArray: [0, 0, 0] },
                     fill: {
                         type: ['solid', 'solid', 'gradient'],
-                        gradient: { shadeIntensity: 1, opacityFrom: 0.2, opacityTo: 0.05, stops: [0, 100] }
+                        gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 100] }
                     },
                     dataLabels: { enabled: false },
                     grid: {
-                        borderColor: '#1e293b',
-                        strokeDashArray: 4,
-                        padding: { top: 0, right: 0, bottom: 0, left: 10 }
+                        borderColor: '#334155',
+                        strokeDashArray: 3,
+                        padding: { top: 10, right: 30, bottom: 10, left: 20 }
                     },
                     xaxis: {
-                        categories: times,
+                        categories: categories,
                         labels: {
                             show: true,
-                            style: { colors: '#94a3b8', fontSize: '10px', fontFamily: 'JetBrains Mono' },
-                            rotate: 0, // Horizontal
+                            style: { colors: '#94a3b8', fontSize: '11px', fontFamily: 'JetBrains Mono' },
+                            rotate: 0,
                             hideOverlappingLabels: true
                         },
                         axisBorder: { show: false },
                         axisTicks: { show: false },
                         tooltip: { enabled: false },
-                        tickAmount: 6 // ~1 label per hour (09:15 to 15:30 is ~6 hours)
+                        tickAmount: 6
                     },
                     yaxis: [
                         {
                             seriesName: 'Put (Bull)',
                             show: true,
                             labels: {
-                                style: { colors: '#64748b', fontSize: '9px', fontFamily: 'JetBrains Mono' },
-                                formatter: (val) => (val / 1000).toFixed(0) + 'k'
-                            }
+                                style: { colors: '#94a3b8', fontSize: '10px', fontFamily: 'JetBrains Mono' },
+                                formatter: (val) => val ? (val / 1000).toFixed(0) + 'k' : ''
+                            },
                         },
                         {
                             seriesName: 'Call (Bear)',
-                            show: false, // Share axis
+                            show: false,
                         },
                         {
                             seriesName: 'Spot Price',
                             opposite: true,
                             show: true,
                             labels: {
-                                style: { colors: '#818cf8', fontSize: '9px', fontFamily: 'JetBrains Mono', fontWeight: 'bold' },
+                                style: { colors: '#818cf8', fontSize: '10px', fontFamily: 'JetBrains Mono', fontWeight: 'bold' },
                                 formatter: (val) => val ? val.toFixed(0) : ''
                             }
                         }
                     ],
                     theme: { mode: 'dark' },
-                    legend: { show: false }
+                    legend: { show: false },
+                    tooltip: {
+                        theme: 'dark',
+                        shared: true,
+                        intersect: false,
+                        x: { show: true },
+                        y: {
+                            formatter: function (y, { seriesIndex, w }) {
+                                if (y === null) return "";
+                                if (seriesIndex === 2) return y.toFixed(2); // Price
+                                return (y / 1000).toFixed(1) + "k";
+                            }
+                        },
+                        style: { fontSize: '12px', fontFamily: 'Outfit, sans-serif' },
+                        marker: { show: true },
+                        fixed: { enabled: false, position: 'topRight', offsetX: 0, offsetY: 0 }
+                    }
                 };
 
                 if (charts[symbol]) {
-                    charts[symbol].updateOptions({ xaxis: { categories: times } });
+                    charts[symbol].updateOptions({
+                        xaxis: { categories: categories }
+                    });
                     charts[symbol].updateSeries([
                         { data: peChg },
                         { data: ceChg },
