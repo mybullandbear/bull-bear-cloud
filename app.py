@@ -868,10 +868,9 @@ def get_oi_history():
         price_map = {r[0]: r[1] for r in price_rows}
         
         # 2. Fetch Raw Option Chain Data (needed for filtering)
-        # Note: This might be heavy if many records. 
-        # Optimization: We select only necessary cols.
+        # Includes LTP now to help estimate spot if missing
         query_chain = '''
-            SELECT timestamp, strike, type, oich 
+            SELECT timestamp, strike, type, oich, ltp, oi 
             FROM option_chain 
             WHERE timestamp >= ?
             ORDER BY timestamp ASC
@@ -894,10 +893,32 @@ def get_oi_history():
                 continue
 
             spot = price_map.get(ts)
+            
+            # --- Fallback: Estimate Spot from ATM (Min Call/Put LTP Diff) ---
+            if spot is None and rows:
+                # Find row with minimal abs(ce_ltp - pe_ltp)
+                # Rows are mixed CE/PE. Need to group by strike first.
+                strike_map = defaultdict(dict)
+                for r in rows:
+                    strike = r[1]
+                    otype = r[2]
+                    ltp = r[4]
+                    strike_map[strike][otype] = ltp
+                
+                best_strike = None
+                min_diff = float('inf')
+                
+                for strike, data in strike_map.items():
+                    if 'CE' in data and 'PE' in data:
+                        diff = abs(data['CE'] - data['PE'])
+                        if diff < min_diff:
+                            min_diff = diff
+                            best_strike = strike
+                
+                if best_strike:
+                    spot = best_strike # Proxy spot is the ATM strike
+
             if spot is None: 
-                # Fallback: Approximate spot from LTP average if needed, or skip
-                # For now, skip if no price data (cannot find ATM)
-                # Or use previous known spot? 
                 continue
 
             # Determine ATM
@@ -920,7 +941,7 @@ def get_oi_history():
                 'time': ts,
                 'ce_change': ce_sum,
                 'pe_change': pe_sum,
-                'price': spot
+                'price': price_map.get(ts, None) # Send explicit None for price if missing, frontend handles it (gap in purple line)
             })
             
         # Sort by time just in case dict unordered
