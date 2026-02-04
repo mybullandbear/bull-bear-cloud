@@ -1224,10 +1224,10 @@
                 const containerId = `#chart-${symbol}`;
                 const container = document.querySelector(containerId);
 
-                if (!data || data.length === 0) {
-                    if (container) container.innerHTML = '<div class="absolute inset-0 flex items-center justify-center text-slate-600 text-xs">No chart data for ' + symbol + '</div>';
-                    return;
-                }
+                if (!data) data = []; // Allow empty data to render structure
+
+                // Remove early return, logic handles empty array gracefully
+                // if (!data || data.length === 0) { ... }
 
                 // --- Pre-Process Data for Full Day Axis (09:15 - 15:30) ---
                 // Generate all minute slots
