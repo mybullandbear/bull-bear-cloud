@@ -1066,14 +1066,14 @@
                         categories: times,
                         labels: {
                             show: true,
-                            style: { colors: '#64748b', fontSize: '9px', fontFamily: 'JetBrains Mono' },
-                            rotate: -45,
+                            style: { colors: '#94a3b8', fontSize: '10px', fontFamily: 'JetBrains Mono' },
+                            rotate: 0, // Horizontal
                             hideOverlappingLabels: true
                         },
                         axisBorder: { show: false },
                         axisTicks: { show: false },
                         tooltip: { enabled: false },
-                        tickAmount: 6 // Limit ticks to keep it clean
+                        tickAmount: 6 // ~1 label per hour (09:15 to 15:30 is ~6 hours)
                     },
                     yaxis: [
                         {

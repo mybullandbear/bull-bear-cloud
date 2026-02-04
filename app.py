@@ -807,13 +807,26 @@ def get_option_chain():
 
 @app.route('/api/oi_history')
 def get_oi_history():
-    """Fetches aggregated OI Change history for charting."""
+    """
+    Fetches aggregated OI Change history for charting.
+    Logic: Sum of OI Chg for Near ATM Strikes only.
+    - NIFTY/BANKNIFTY: +/- 20 strikes
+    - FINNIFTY: +/- 10 strikes
+    """
     symbol = request.args.get('symbol', 'NIFTY')
     history = []
     
     db_path = DB_FILES.get(symbol)
     if not db_path or not os.path.exists(db_path):
         return jsonify([])
+
+    # Define Range per Symbol
+    # NIFTY step 50 * 20 = 1000
+    # BANKNIFTY step 100 * 20 = 2000
+    # FINNIFTY step 50 * 10 = 500
+    range_limit = 1000 
+    if symbol == 'BANKNIFTY': range_limit = 2000
+    elif symbol == 'FINNIFTY': range_limit = 500
 
     try:
         # Get data from today (midnight onwards) - IST
@@ -824,41 +837,70 @@ def get_oi_history():
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
-        # 1. Fetch Option OI Data (Aggregated)
-        query_oi = '''
-            SELECT timestamp, 
-                   SUM(CASE WHEN type='CE' THEN oich ELSE 0 END) as ce_change,
-                   SUM(CASE WHEN type='PE' THEN oich ELSE 0 END) as pe_change
-            FROM option_chain 
-            WHERE timestamp >= ?
-            GROUP BY timestamp
-            ORDER BY timestamp ASC
-        '''
-        cursor.execute(query_oi, (start_of_day,))
-        oi_rows = cursor.fetchall()
-        
-        # 2. Fetch Spot Price Data
+        # 1. Fetch Spot Price Data First (to determine ATM)
         cursor.execute("SELECT timestamp, price FROM market_history WHERE timestamp >= ? ORDER BY timestamp ASC", (start_of_day,))
         price_rows = cursor.fetchall()
-        
-        conn.close()
-
-        # Convert to dictionary for easy merging
         price_map = {r[0]: r[1] for r in price_rows}
         
-        # Merge Data
-        for r in oi_rows:
-            ts = r[0]
+        # 2. Fetch Raw Option Chain Data (needed for filtering)
+        # Note: This might be heavy if many records. 
+        # Optimization: We select only necessary cols.
+        query_chain = '''
+            SELECT timestamp, strike, type, oich 
+            FROM option_chain 
+            WHERE timestamp >= ?
+            ORDER BY timestamp ASC
+        '''
+        cursor.execute(query_chain, (start_of_day,))
+        chain_rows = cursor.fetchall()
+        conn.close()
+
+        # 3. Process Data Grouped by Timestamp
+        from collections import defaultdict
+        grouped_data = defaultdict(list)
+        for r in chain_rows:
+            grouped_data[r[0]].append(r)
+
+        # 4. Calculate stats per timestamp
+        for ts, rows in grouped_data.items():
             # Filter Time: 09:15 to 15:30
-            time_part = ts.split(' ')[1] # HH:MM:SS
-            if "09:15:00" <= time_part <= "15:30:00":
-                history.append({
-                    'time': ts,
-                    'ce_change': r[1],
-                    'pe_change': r[2],
-                    'price': price_map.get(ts, None) # Might be None if not synced perfectly, frontend handles null
-                })
+            time_part = ts.split(' ')[1]
+            if not ("09:15:00" <= time_part <= "15:30:00"):
+                continue
+
+            spot = price_map.get(ts)
+            if spot is None: 
+                # Fallback: Approximate spot from LTP average if needed, or skip
+                # For now, skip if no price data (cannot find ATM)
+                # Or use previous known spot? 
+                continue
+
+            # Determine ATM
+            # Simplistic ATM: Round to nearest step not strictly needed, just checking distance
             
+            ce_sum = 0
+            pe_sum = 0
+            
+            for r in rows:
+                strike = r[1]
+                otype = r[2] # CE/PE
+                oich = r[3]
+                
+                # Filter Condition: Strike is within +/- Range of Spot
+                if abs(strike - spot) <= range_limit:
+                    if otype == 'CE': ce_sum += oich
+                    elif otype == 'PE': pe_sum += oich
+            
+            history.append({
+                'time': ts,
+                'ce_change': ce_sum,
+                'pe_change': pe_sum,
+                'price': spot
+            })
+            
+        # Sort by time just in case dict unordered
+        history.sort(key=lambda x: x['time'])
+
     except Exception as e:
         print(f"OI History Error for {symbol}: {e}")
         return jsonify({"error": str(e)})
