@@ -1034,22 +1034,28 @@
                 const times = data.map(d => d.time.split(' ')[1].substring(0, 5)); // HH:MM
                 const ceChg = data.map(d => d.ce_change);
                 const peChg = data.map(d => d.pe_change);
+                const prices = data.map(d => d.price);
 
                 const options = {
                     series: [
-                        { name: 'Put (Support)', data: peChg },
-                        { name: 'Call (Resist)', data: ceChg }
+                        { name: 'Put (Bull)', type: 'line', data: peChg },
+                        { name: 'Call (Bear)', type: 'line', data: ceChg },
+                        { name: 'Spot Price', type: 'area', data: prices }
                     ],
                     chart: {
-                        type: 'line',
                         height: '100%',
+                        type: 'line',
                         toolbar: { show: false },
                         animations: { enabled: false }, // disable for perf
                         background: 'transparent',
                         fontFamily: 'Outfit, sans-serif'
                     },
-                    colors: ['#10b981', '#f43f5e'], // Emerald, Rose
-                    stroke: { curve: 'smooth', width: 2 },
+                    colors: ['#10b981', '#f43f5e', '#6366f1'], // Emerald, Rose, Indigo
+                    stroke: { curve: 'smooth', width: [2, 2, 3], dashArray: [0, 0, 0] },
+                    fill: {
+                        type: ['solid', 'solid', 'gradient'],
+                        gradient: { shadeIntensity: 1, opacityFrom: 0.2, opacityTo: 0.05, stops: [0, 100] }
+                    },
                     dataLabels: { enabled: false },
                     grid: {
                         borderColor: '#1e293b',
@@ -1058,17 +1064,40 @@
                     },
                     xaxis: {
                         categories: times,
-                        labels: { show: false },
+                        labels: {
+                            show: true,
+                            style: { colors: '#64748b', fontSize: '9px', fontFamily: 'JetBrains Mono' },
+                            rotate: -45,
+                            hideOverlappingLabels: true
+                        },
                         axisBorder: { show: false },
                         axisTicks: { show: false },
-                        tooltip: { enabled: false }
+                        tooltip: { enabled: false },
+                        tickAmount: 6 // Limit ticks to keep it clean
                     },
-                    yaxis: {
-                        labels: {
-                            style: { colors: '#64748b', fontSize: '9px', fontFamily: 'JetBrains Mono' },
-                            formatter: (val) => (val / 1000).toFixed(0) + 'k'
+                    yaxis: [
+                        {
+                            seriesName: 'Put (Bull)',
+                            show: true,
+                            labels: {
+                                style: { colors: '#64748b', fontSize: '9px', fontFamily: 'JetBrains Mono' },
+                                formatter: (val) => (val / 1000).toFixed(0) + 'k'
+                            }
+                        },
+                        {
+                            seriesName: 'Call (Bear)',
+                            show: false, // Share axis
+                        },
+                        {
+                            seriesName: 'Spot Price',
+                            opposite: true,
+                            show: true,
+                            labels: {
+                                style: { colors: '#818cf8', fontSize: '9px', fontFamily: 'JetBrains Mono', fontWeight: 'bold' },
+                                formatter: (val) => val ? val.toFixed(0) : ''
+                            }
                         }
-                    },
+                    ],
                     theme: { mode: 'dark' },
                     legend: { show: false }
                 };
@@ -1077,7 +1106,8 @@
                     charts[symbol].updateOptions({ xaxis: { categories: times } });
                     charts[symbol].updateSeries([
                         { data: peChg },
-                        { data: ceChg }
+                        { data: ceChg },
+                        { data: prices }
                     ]);
                 } else {
                     charts[symbol] = new ApexCharts(document.querySelector(containerId), options);
