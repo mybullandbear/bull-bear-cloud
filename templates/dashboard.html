@@ -1267,9 +1267,13 @@
 
 
         async function renderAdvancedCharts(symbol) {
+            alert("DEBUG: Entering renderAdvancedCharts for " + symbol);
             try {
                 const res = await fetch(`/api/oi_history?symbol=${symbol}`);
                 let data = await res.json();
+
+                alert(`DEBUG: Fetched ${data ? data.length : 0} records for ${symbol}`);
+
                 if (!data) data = [];
 
                 // --- 1. Prepare X-Axis (Time Slots) ---
@@ -1304,12 +1308,15 @@
                 const pcr = getArr('pcr');
 
                 // --- 2. Create/Update Charts ---
+                alert("DEBUG: Starting Chart Render Loop");
 
                 // A. Total OI
                 createOrUpdateChart('chart-total-oi', 'total',
                     [{ name: 'Put OI', type: 'line', data: peOI }, { name: 'Call OI', type: 'line', data: ceOI }, { name: 'Price', type: 'area', data: prices }],
                     ['#10b981', '#f43f5e', 'rgba(251, 191, 36, 0.15)'], true
                 );
+
+                alert("DEBUG: Rendered Total OI");
 
                 // B. Change OI
                 createOrUpdateChart('chart-change-oi', 'change',
@@ -1329,13 +1336,20 @@
                     ['#a855f7', 'rgba(251, 191, 36, 0.15)'], true
                 );
 
+                alert("DEBUG: All Charts Rendered");
 
-            } catch (e) { console.error("Chart Render Error", e); }
+            } catch (e) {
+                console.error("Chart Render Error", e);
+                alert("Chart Render Error: " + e.message); // Visible Error
+            }
         }
 
         function createOrUpdateChart(id, key, series, colors, dualAxis) {
             const el = document.getElementById(id);
-            if (!el) return;
+            if (!el) {
+                alert(`DEBUG: Missing Container #${id}`);
+                return;
+            }
 
             const commonOpts = {
                 chart: { type: 'line', height: '100%', background: 'transparent', toolbar: { show: false }, fontFamily: 'Outfit, sans-serif', animations: { enabled: false } },
