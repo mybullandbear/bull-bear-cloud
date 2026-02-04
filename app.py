@@ -367,17 +367,66 @@ def calculate_signals(symbol, chain, spot, pcr, max_pain, atm_strike):
     elif trend_status == 'Bearish':
          signals.append({'type': 'BEARISH', 'strategy': 'Trend Alignment', 'desc': f"Market Structure is Bearish (Score: {trend_score})."})
 
-    # --- Matrix Status Construction ---
-    matrix = {
-        'pcr': {'val': pcr, 'status': 'Bullish' if pcr >= PCR_BULL else ('Bearish' if pcr <= PCR_BEAR else 'Neutral')},
-        'max_pain': {'val': max_pain, 'status': 'Bullish' if (spot < max_pain - MP_DIV) else ('Bearish' if (spot > max_pain + MP_DIV) else 'Neural')},
-        'oi_flow': {'val': flow_status, 
-                    'status': 'Bullish' if is_flow_bull else ('Bearish' if is_flow_bear else 'Neutral')},
-        'trend': {'val': f"Score: {trend_score}", 
-                  'status': trend_status}
+    # --- 5. Composite Confluence Score (-10 to +10) ---
+    # Weight: Flow(40%), Trend(30%), PCR(20%), MaxPain(10%)
+    
+    score = 0
+    reasons = []
+
+    # A. Flow Score (Max 4)
+    if is_flow_bull: 
+        if "Unwinding" in flow_status: score += 4; reasons.append("Call Unwinding (Explosive)")
+        else: score += 3; reasons.append("Put Writing (Support)")
+    elif is_flow_bear:
+        if "Unwinding" in flow_status: score -= 4; reasons.append("Put Unwinding (Crash)")
+        else: score -= 3; reasons.append("Call Writing (Resistance)")
+
+    # B. Trend Score (Max 3)
+    # trend_score is already roughly -3 to +3 range based on strike count logic earlier
+    # Let's normalize it slightly
+    if trend_status == 'Bullish': score += 2; reasons.append("Bullish Structure")
+    elif trend_status == 'Bearish': score -= 2; reasons.append("Bearish Structure")
+
+    # C. PCR Score (Max 2)
+    if pcr >= PCR_BULL: score += 2; reasons.append("PCR Oversold/Bullish")
+    elif pcr <= PCR_BEAR: score -= 2; reasons.append("PCR Overbought/Bearish")
+
+    # D. Max Pain Score (Max 1)
+    # If Spot > MaxPain -> Lean Bearish (Reversion)
+    if spot > (max_pain + MP_DIV): score -= 1 
+    elif spot < (max_pain - MP_DIV): score += 1
+
+    # --- Trade Recommendation ---
+    action = "WAIT / NEUTRAL"
+    color = "slate"
+    
+    if score >= 5:
+        action = "STRONG BUY (CE)"
+        color = "emerald"
+    elif score >= 2:
+        action = "BUY ON DIPS"
+        color = "teal"
+    elif score <= -5:
+        action = "STRONG SELL (PE)"
+        color = "rose"
+    elif score <= -2:
+        action = "SELL ON RISE"
+        color = "orange"
+
+    # --- Matrix / Card Construction ---
+    # We return a 'card' object for the UI to render the Gauge & Action
+    signal_card = {
+        'symbol': symbol,
+        'score': score, # -10 to 10
+        'action': action,
+        'color': color,
+        'reasons': reasons[:2], # Top 2 active drivers
+        'pcr': pcr,
+        'max_pain': max_pain,
+        'spot': spot
     }
 
-    return signals, matrix
+    return signals, signal_card
     
 def get_step(symbol):
     if symbol == 'NIFTY' or symbol == 'FINNIFTY': return [50, 0] # range is dummy

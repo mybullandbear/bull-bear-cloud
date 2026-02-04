@@ -239,31 +239,70 @@
             <!-- Analysis Header -->
             <div class="glass px-6 py-4 rounded-xl mb-4 shrink-0 flex justify-between items-center shadow-lg">
                 <div class="flex gap-8 items-center">
-                    <div>
-                        <span class="text-sm text-slate-500 uppercase tracking-wider block mb-1">Looking at</span>
-                        <span class="text-2xl font-bold text-white tracking-tight current-symbol-text">NIFTY</span>
-                    </div>
+                    <!-- Signals Section (Cockpit) -->
+                    <div class="col-span-12 lg:col-span-4 flex flex-col gap-6">
+                        <div
+                            class="glass p-5 rounded-2xl border border-white/5 relative bg-gradient-to-bx from-slate-900/50 to-slate-900/80 shadow-xl backdrop-blur-md">
+                            <div class="flex justify-between items-center mb-4">
+                                <div>
+                                    <h3 class="font-bold text-slate-100 text-lg tracking-tight">Signal Cockpit</h3>
+                                    <p class="text-xs text-slate-400 font-mono mt-0.5 tracking-wide">AI ALGO • LIVE</p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <span
+                                        class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse"></span>
+                                </div>
+                            </div>
 
-                    <div class="h-8 w-px bg-slate-700"></div>
+                            <!-- Gauge Grid -->
+                            <div class="grid grid-cols-1 gap-4">
+                                <!-- NIFTY -->
+                                <div
+                                    class="bg-slate-800/30 rounded-xl p-4 border border-white/5 relative group hover:border-white/10 transition-colors">
+                                    <div class="absolute top-3 left-4 text-xs font-bold text-slate-300">NIFTY</div>
+                                    <div id="signal-NIFTY" class="-mt-4 -mb-4 flex justify-center"></div>
+                                    <div id="reasons-NIFTY"
+                                        class="flex flex-col gap-1 items-center justify-center -mt-2"></div>
+                                </div>
 
-                    <div class="flex gap-6 text-sm">
-                        <div>
-                            <span class="block text-[10px] text-slate-500 uppercase">PCR</span>
-                            <span id="pcr-value" class="font-mono font-bold text-slate-200 text-lg">--</span>
-                        </div>
-                        <div>
-                            <span class="block text-[10px] text-slate-500 uppercase">Max Pain</span>
-                            <span id="max-pain-value"
-                                class="font-mono font-bold text-indigo-400 text-lg shadow-indigo-500/20 drop-shadow-sm">--</span>
-                        </div>
-                        <div>
-                            <span class="block text-[10px] text-slate-500 uppercase">Sentiment</span>
-                            <span id="sentiment-value" class="font-bold text-lg">--</span>
-                        </div>
-                    </div>
-                </div>
+                                <!-- BANKNIFTY -->
+                                <div
+                                    class="bg-slate-800/30 rounded-xl p-4 border border-white/5 relative group hover:border-white/10 transition-colors">
+                                    <div class="absolute top-3 left-4 text-xs font-bold text-slate-300">BANKNIFTY</div>
+                                    <div id="signal-BANKNIFTY" class="-mt-4 -mb-4 flex justify-center"></div>
+                                    <div id="reasons-BANKNIFTY"
+                                        class="flex flex-col gap-1 items-center justify-center -mt-2"></div>
+                                </div>
 
-                <div class="text-right">
+                                <!-- FINNIFTY -->
+                                <div
+                                    class="bg-slate-800/30 rounded-xl p-4 border border-white/5 relative group hover:border-white/10 transition-colors">
+                                    <div class="absolute top-3 left-4 text-xs font-bold text-slate-300">FINNIFTY</div>
+                                    <div id="signal-FINNIFTY" class="-mt-4 -mb-4 flex justify-center"></div>
+                                    <div id="reasons-FINNIFTY"
+                                        class="flex flex-col gap-1 items-center justify-center -mt-2"></div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Signal History Feed -->
+                        <div
+                            class="glass p-5 rounded-2xl border border-white/5 flex-1 min-h-[300px] flex flex-col relative bg-gradient-to-b from-slate-900/50 to-slate-900/80">
+                            <h3 class="font-bold text-slate-200 text-sm mb-4 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Signal History
+                            </h3>
+                            <div id="signal-history"
+                                class="space-y-3 overflow-y-auto pr-1 custom-scrollbar flex-1 max-h-[400px]">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div> class="text-right">
                     <span class="block text-[10px] text-slate-500 uppercase">Spot Price</span>
                     <span id="spot-price-analysis"
                         class="font-mono font-bold text-2xl md:text-3xl text-yellow-400 drop-shadow-md">---.--</span>
@@ -1006,6 +1045,118 @@
                 console.error("History fetch failed", e);
             }
         }
+
+        // --- Signal Cockpit (Gauges) ---
+        async function updateSignals() {
+            try {
+                // We fetch the same API but now it returns the 'matrix' which is our 'signal_card'
+                // Actually wait, existing logic fetches 'market_data' via /api/option_chain
+                const res = await fetch('/api/option_chain');
+                const data = await res.json();
+
+                if (data) {
+                    ['NIFTY', 'BANKNIFTY', 'FINNIFTY'].forEach(sym => {
+                        if (data[sym] && data[sym].matrix) {
+                            renderSignalGauge(sym, data[sym].matrix);
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error("Signal fetch error:", e);
+            }
+        }
+
+        let signalCharts = {};
+
+        function renderSignalGauge(symbol, card) {
+            const containerId = `#signal-${symbol}`; // We need to add these div IDs in HTML
+            const el = document.querySelector(containerId);
+            if (!el) return;
+
+            // Normalize Score (-10 to 10) -> (0 to 100) for Gauge
+            // -10 = 0%, 0 = 50%, 10 = 100%
+            const seriesVal = ((card.score + 10) / 20) * 100;
+
+            // Color Logic
+            let color = '#94a3b8'; // Neutral Slate
+            if (card.score >= 5) color = '#10b981'; // Emerald
+            else if (card.score >= 2) color = '#2dd4bf'; // Teal
+            else if (card.score <= -5) color = '#f43f5e'; // Rose
+            else if (card.score <= -2) color = '#f97316'; // Orange
+
+            const options = {
+                series: [seriesVal],
+                chart: {
+                    height: 250,
+                    type: 'radialBar',
+                    fontFamily: 'Outfit, sans-serif',
+                    animations: { enabled: true, speed: 800 }
+                },
+                plotOptions: {
+                    radialBar: {
+                        startAngle: -90,
+                        endAngle: 90,
+                        track: {
+                            background: "#334155",
+                            strokeWidth: '97%',
+                            margin: 5,
+                        },
+                        dataLabels: {
+                            show: true,
+                            name: {
+                                show: true,
+                                fontSize: '14px',
+                                color: '#94a3b8',
+                                offsetY: -10
+                            },
+                            value: {
+                                show: false
+                            }
+                        }
+                    }
+                },
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        shade: 'dark',
+                        type: 'horizontal',
+                        shadeIntensity: 0.5,
+                        gradientToColors: [color],
+                        inverseColors: true,
+                        opacityFrom: 1,
+                        opacityTo: 1,
+                        stops: [0, 100]
+                    }
+                },
+                stroke: { lineCap: 'round' },
+                labels: [card.action], // The text inside
+            };
+
+            if (signalCharts[symbol]) {
+                signalCharts[symbol].updateOptions({
+                    labels: [card.action],
+                    fill: { gradient: { gradientToColors: [color] } } // Update color dynamically
+                });
+                signalCharts[symbol].updateSeries([seriesVal]);
+            } else {
+                signalCharts[symbol] = new ApexCharts(el, options);
+                signalCharts[symbol].render();
+            }
+
+            // Update Reasons Text below chart
+            const reasonEl = document.querySelector(`#reasons-${symbol}`);
+            if (reasonEl) {
+                reasonEl.innerHTML = card.reasons.map(r =>
+                    `<div class="text-[10px] text-slate-400 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-${card.color}-500"></span> ${r}
+                     </div>`
+                ).join('');
+            }
+        }
+
+        // Call updateSignals periodically or link it to existing loop
+        setInterval(updateSignals, 5000);
+        updateSignals();
 
         // --- Charting ---
         let charts = {
