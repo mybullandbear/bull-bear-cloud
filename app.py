@@ -246,10 +246,21 @@ def calculate_signals(symbol, chain, spot, pcr, max_pain, atm_strike):
         signals.append({'type': 'BULLISH', 'strategy': 'Trend Alignment', 'desc': "Majority strikes showing Bullish Trend (LB/SC)."})
         
     # Bearish: PE Long Buildup OR CE Short Buildup dominance
+    # Bearish: PE Long Buildup OR CE Short Buildup dominance
     if (lb_count_pe + sb_count_ce) >= 3:
         signals.append({'type': 'BEARISH', 'strategy': 'Trend Alignment', 'desc': "Majority strikes showing Bearish Trend (LB/SB)."})
 
-    return signals
+    # --- Matrix Status Construction ---
+    matrix = {
+        'pcr': {'val': pcr, 'status': 'Bullish' if pcr >= PCR_BULL else ('Bearish' if pcr <= PCR_BEAR else 'Neutral')},
+        'max_pain': {'val': max_pain, 'status': 'Bullish' if (spot < max_pain - MP_DIV) else ('Bearish' if (spot > max_pain + MP_DIV) else 'Neural')},
+        'oi_flow': {'val': 'PE Writing' if (pe_chg_sum > ce_chg_sum*OI_AGGR) else ('CE Writing' if (ce_chg_sum > pe_chg_sum*OI_AGGR) else 'Balanced'),
+                    'status': 'Bullish' if (pe_chg_sum > ce_chg_sum*OI_AGGR) else ('Bearish' if (ce_chg_sum > pe_chg_sum*OI_AGGR) else 'Neutral')},
+        'trend': {'val': f"{lb_count_ce+sc_count_pe} vs {lb_count_pe+sb_count_ce}", 
+                  'status': 'Bullish' if (lb_count_ce + sc_count_pe) >= 3 else ('Bearish' if (lb_count_pe + sb_count_ce) >= 3 else 'Neutral')}
+    }
+
+    return signals, matrix
     
 def get_step(symbol):
     if symbol == 'NIFTY' or symbol == 'FINNIFTY': return [50, 0] # range is dummy
@@ -556,7 +567,7 @@ def data_worker():
                     market_data['NIFTY']['sentiment'] = senti
                     market_data['NIFTY']['max_pain'] = calculate_max_pain(chain_data)
                     market_data['NIFTY']['max_pain'] = calculate_max_pain(chain_data)
-                    market_data['NIFTY']['alerts'] = calculate_signals('NIFTY', chain_data, spot, pcr, market_data['NIFTY']['max_pain'], atm_strike)
+                    market_data['NIFTY']['alerts'], market_data['NIFTY']['matrix'] = calculate_signals('NIFTY', chain_data, spot, pcr, market_data['NIFTY']['max_pain'], atm_strike)
                     
                     # Push Notification (First urgent signal only)
                     if market_data['NIFTY']['alerts']:
@@ -592,7 +603,7 @@ def data_worker():
                     market_data['BANKNIFTY']['pcr'] = pcr
                     market_data['BANKNIFTY']['sentiment'] = senti
                     market_data['BANKNIFTY']['max_pain'] = calculate_max_pain(chain_data)
-                    market_data['BANKNIFTY']['alerts'] = calculate_signals('BANKNIFTY', chain_data, spot, pcr, market_data['BANKNIFTY']['max_pain'], atm_strike)
+                    market_data['BANKNIFTY']['alerts'], market_data['BANKNIFTY']['matrix'] = calculate_signals('BANKNIFTY', chain_data, spot, pcr, market_data['BANKNIFTY']['max_pain'], atm_strike)
 
                     # Push Notification
                     for alert in market_data['BANKNIFTY']['alerts']:
@@ -625,7 +636,7 @@ def data_worker():
                     market_data['FINNIFTY']['sentiment'] = senti
                     market_data['FINNIFTY']['max_pain'] = calculate_max_pain(chain_data)
                     market_data['FINNIFTY']['max_pain'] = calculate_max_pain(chain_data)
-                    market_data['FINNIFTY']['alerts'] = calculate_signals('FINNIFTY', chain_data, spot, pcr, market_data['FINNIFTY']['max_pain'], atm_strike)
+                    market_data['FINNIFTY']['alerts'], market_data['FINNIFTY']['matrix'] = calculate_signals('FINNIFTY', chain_data, spot, pcr, market_data['FINNIFTY']['max_pain'], atm_strike)
                     
                     save_to_db('FINNIFTY', chain_data)
 
