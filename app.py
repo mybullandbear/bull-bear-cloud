@@ -190,7 +190,13 @@ def calculate_signals(symbol, chain, spot, pcr, max_pain, atm_strike):
     4. Smart Money Trend (Buildup/Covering)
     """
     signals = []
-    if not chain or not atm_strike: return signals
+    if not chain or not atm_strike: return signals, {}
+
+    # --- Robustness Check ---
+    # If API returns partial data (e.g. < 10 strikes), signals will fluctuate wildly.
+    if len(chain) < 10:
+        print(f"WARNING: Insufficient chain data for signals ({len(chain)} strikes). Skipping.")
+        return signals, {}
 
     # Thresholds
     PCR_BULL = 1.2
