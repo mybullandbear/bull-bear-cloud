@@ -9,10 +9,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#020617">
     <link rel="manifest" href="/static/manifest.json">
-    <title>MyBullAndBearFire</title>
+    <title>BullBear.AI - Signal Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
         rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <script>
@@ -20,7 +20,7 @@
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
+                        sans: ['Outfit', 'sans-serif'],
                         mono: ['JetBrains Mono', 'monospace'],
                     },
                     colors: {
@@ -143,13 +143,14 @@
                 <nav
                     class="hidden md:flex space-x-1 bg-slate-900/50 p-1 rounded-lg border border-slate-800 backdrop-blur-sm">
                     <button onclick="switchView('overview')" id="btn-overview"
-                        class="px-4 py-1.5 rounded-md text-sm font-medium transition-all shadow-sm">
-                        Overview
-                    </button>
+                        class="px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 transform scale-105">Overview</button>
                     <button onclick="switchView('analysis')" id="btn-analysis"
-                        class="px-4 py-1.5 rounded-md text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-slate-800">
-                        Analysis
-                    </button>
+                        class="px-4 py-1.5 rounded-md text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-slate-800">Deep
+                        Dive</button>
+                    <button onclick="switchView('charts')" id="btn-charts"
+                        class="px-4 py-1.5 rounded-md text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-slate-800">Charts</button>
+                    <button onclick="switchView('signals')" id="btn-signals"
+                        class="px-4 py-1.5 rounded-md text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-slate-800">Signals</button>
                 </nav>
             </div>
 
@@ -316,7 +317,6 @@
                 </div>
             </div>
         </div>
-        </div>
 
         <div id="view-signals" class="absolute inset-0 p-2 overflow-y-auto hidden flex flex-col pt-20">
             <h2 class="text-xl font-bold text-white mb-4 px-1">Strategy Matrix</h2>
@@ -340,6 +340,51 @@
 
             <h3 class="text-md font-bold text-white mt-6 mb-2 px-1">Active Signal Logs</h3>
             <div id="signals-container" class="space-y-2 max-w-3xl w-full pb-24">
+            </div>
+        </div>
+
+        <!-- View 4: Charts -->
+        <div id="view-charts" class="absolute inset-0 p-3 overflow-y-auto hidden flex flex-col pt-20 pb-24">
+            <div class="flex justify-between items-end mb-6 px-1">
+                <div>
+                    <h2 class="text-2xl font-bold text-white">Market Trends</h2>
+                    <p class="text-xs text-slate-500 font-mono">OI Change (Intraday)</p>
+                </div>
+                <div class="flex gap-4 text-[10px] font-mono bg-slate-900/50 p-2 rounded-lg border border-slate-800">
+                    <div class="flex items-center gap-1"><span
+                            class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/30"></span> Put
+                        (Bull)</div>
+                    <div class="flex items-center gap-1"><span
+                            class="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-lg shadow-rose-500/30"></span> Call
+                        (Bear)</div>
+                </div>
+            </div>
+
+            <!-- Chart 1: NIFTY -->
+            <div class="mb-6">
+                <h3 class="text-sm font-bold text-slate-300 mb-2 pl-2 border-l-2 border-indigo-500">NIFTY</h3>
+                <div
+                    class="rounded-xl border border-slate-800 shadow-xl bg-slate-900/60 p-2 h-64 overflow-hidden relative backdrop-blur-sm">
+                    <div id="chart-NIFTY" class="w-full h-full"></div>
+                </div>
+            </div>
+
+            <!-- Chart 2: BANKNIFTY -->
+            <div class="mb-6">
+                <h3 class="text-sm font-bold text-slate-300 mb-2 pl-2 border-l-2 border-teal-500">BANKNIFTY</h3>
+                <div
+                    class="rounded-xl border border-slate-800 shadow-xl bg-slate-900/60 p-2 h-64 overflow-hidden relative backdrop-blur-sm">
+                    <div id="chart-BANKNIFTY" class="w-full h-full"></div>
+                </div>
+            </div>
+
+            <!-- Chart 3: FINNIFTY -->
+            <div class="mb-6">
+                <h3 class="text-sm font-bold text-slate-300 mb-2 pl-2 border-l-2 border-emerald-500">FINNIFTY</h3>
+                <div
+                    class="rounded-xl border border-slate-800 shadow-xl bg-slate-900/60 p-2 h-64 overflow-hidden relative backdrop-blur-sm">
+                    <div id="chart-FINNIFTY" class="w-full h-full"></div>
+                </div>
             </div>
         </div>
 
@@ -367,6 +412,14 @@
                 </path>
             </svg>
             <span class="text-[10px] font-bold tracking-wide">Deep Dive</span>
+        </button>
+        <button onclick="switchView('charts')" id="mob-btn-charts"
+            class="flex-1 py-3 flex flex-col items-center justify-center gap-1 text-slate-500 transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
+            </svg>
+            <span class="text-[10px] font-bold tracking-wide">Charts</span>
         </button>
         <button onclick="switchView('signals')" id="mob-btn-signals"
             class="flex-1 py-3 flex flex-col items-center justify-center gap-1 text-slate-500 transition-colors">
@@ -417,38 +470,48 @@
             const vOverview = document.getElementById('view-overview');
             const vAnalysis = document.getElementById('view-analysis');
             const vSignals = document.getElementById('view-signals');
+            const vCharts = document.getElementById('view-charts');
 
-            [vOverview, vAnalysis, vSignals].forEach(el => el.classList.add('hidden'));
+            [vOverview, vAnalysis, vSignals, vCharts].forEach(el => el.classList.add('hidden'));
 
             if (view === 'overview') vOverview.classList.remove('hidden');
             else if (view === 'analysis') vAnalysis.classList.remove('hidden');
             else if (view === 'signals') vSignals.classList.remove('hidden');
+            else if (view === 'charts') vCharts.classList.remove('hidden');
 
             // Toggle Buttons (Desktop)
             const btnOver = document.getElementById('btn-overview');
             const btnAnal = document.getElementById('btn-analysis');
+            const btnCharts = document.getElementById('btn-charts');
+
             // Toggle Buttons (Mobile)
             const mobOver = document.getElementById('mob-btn-overview');
             const mobAnal = document.getElementById('mob-btn-analysis');
+            const mobCharts = document.getElementById('mob-btn-charts');
             const mobSig = document.getElementById('mob-btn-signals');
 
             const activeClass = "px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 transform scale-105";
             const inactiveClass = "px-4 py-1.5 rounded-md text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-slate-800";
 
             // Reset Mobile
-            [mobOver, mobAnal, mobSig].forEach(b => {
+            [mobOver, mobAnal, mobSig, mobCharts].forEach(b => {
                 b.classList.remove('text-indigo-400');
                 b.classList.add('text-slate-500');
             });
 
+            // Reset Desktop
+            [btnOver, btnAnal, btnCharts].forEach(b => { if (b) b.className = inactiveClass; });
+
             if (view === 'overview') {
                 if (btnOver) btnOver.className = activeClass;
-                if (btnAnal) btnAnal.className = inactiveClass;
                 mobOver.classList.add('text-indigo-400');
             } else if (view === 'analysis') {
-                if (btnOver) btnOver.className = inactiveClass;
                 if (btnAnal) btnAnal.className = activeClass;
                 mobAnal.classList.add('text-indigo-400');
+            } else if (view === 'charts') {
+                if (btnCharts) btnAnal.className = activeClass; // This was a bug, should be btnCharts
+                if (btnCharts) btnCharts.className = activeClass;
+                mobCharts.classList.add('text-indigo-400');
             } else if (view === 'signals') {
                 mobSig.classList.add('text-indigo-400');
             }
@@ -481,7 +544,9 @@
                                 updateAnalysisHeader(symbolData);
                             } else if (currentView === 'signals') {
                                 renderSignalMatrix(data);
-                                fetchSignalHistory(); // Load history
+                                fetchSignalHistory();
+                            } else if (currentView === 'charts') {
+                                renderAllCharts();
                             }
                         }
                     }
@@ -939,6 +1004,88 @@
                 }
             } catch (e) {
                 console.error("History fetch failed", e);
+            }
+        }
+
+        // --- Charting ---
+        let charts = {
+            'NIFTY': null,
+            'BANKNIFTY': null,
+            'FINNIFTY': null
+        };
+
+        async function renderAllCharts() {
+            ['NIFTY', 'BANKNIFTY', 'FINNIFTY'].forEach(sym => fetchAndRenderChart(sym));
+        }
+
+        async function fetchAndRenderChart(symbol) {
+            try {
+                const res = await fetch(`/api/oi_history?symbol=${symbol}`);
+                const data = await res.json();
+
+                const containerId = `#chart-${symbol}`;
+                const container = document.querySelector(containerId);
+
+                if (!data || data.length === 0) {
+                    if (container) container.innerHTML = '<div class="absolute inset-0 flex items-center justify-center text-slate-600 text-xs">No chart data for ' + symbol + '</div>';
+                    return;
+                }
+
+                const times = data.map(d => d.time.split(' ')[1].substring(0, 5)); // HH:MM
+                const ceChg = data.map(d => d.ce_change);
+                const peChg = data.map(d => d.pe_change);
+
+                const options = {
+                    series: [
+                        { name: 'Put (Support)', data: peChg },
+                        { name: 'Call (Resist)', data: ceChg }
+                    ],
+                    chart: {
+                        type: 'line',
+                        height: '100%',
+                        toolbar: { show: false },
+                        animations: { enabled: false }, // disable for perf
+                        background: 'transparent',
+                        fontFamily: 'Outfit, sans-serif'
+                    },
+                    colors: ['#10b981', '#f43f5e'], // Emerald, Rose
+                    stroke: { curve: 'smooth', width: 2 },
+                    dataLabels: { enabled: false },
+                    grid: {
+                        borderColor: '#1e293b',
+                        strokeDashArray: 4,
+                        padding: { top: 0, right: 0, bottom: 0, left: 10 }
+                    },
+                    xaxis: {
+                        categories: times,
+                        labels: { show: false },
+                        axisBorder: { show: false },
+                        axisTicks: { show: false },
+                        tooltip: { enabled: false }
+                    },
+                    yaxis: {
+                        labels: {
+                            style: { colors: '#64748b', fontSize: '9px', fontFamily: 'JetBrains Mono' },
+                            formatter: (val) => (val / 1000).toFixed(0) + 'k'
+                        }
+                    },
+                    theme: { mode: 'dark' },
+                    legend: { show: false }
+                };
+
+                if (charts[symbol]) {
+                    charts[symbol].updateOptions({ xaxis: { categories: times } });
+                    charts[symbol].updateSeries([
+                        { data: peChg },
+                        { data: ceChg }
+                    ]);
+                } else {
+                    charts[symbol] = new ApexCharts(document.querySelector(containerId), options);
+                    charts[symbol].render();
+                }
+
+            } catch (e) {
+                console.error(`Chart Error ${symbol}:`, e);
             }
         }
     </script>

@@ -786,6 +786,55 @@ def get_option_chain():
     """Returns the latest market data."""
     return jsonify(market_data)
 
+@app.route('/api/oi_history')
+def get_oi_history():
+    """Fetches aggregated OI Change history for charting."""
+    symbol = request.args.get('symbol', 'NIFTY')
+    history = []
+    
+    db_path = DB_FILES.get(symbol)
+    if not db_path or not os.path.exists(db_path):
+        return jsonify([])
+
+    try:
+        # Get data from today (midnight onwards)
+        start_of_day = datetime.now().strftime('%Y-%m-%d 00:00:00')
+        
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Aggregate by timestamp: Sum of CE & PE Change
+        # We perform a GROUP BY timestamp to get total market view per minute
+        query = '''
+            SELECT timestamp, 
+                   SUM(CASE WHEN type='CE' THEN oich ELSE 0 END) as ce_change,
+                   SUM(CASE WHEN type='PE' THEN oich ELSE 0 END) as pe_change,
+                   SUM(CASE WHEN type='CE' THEN oi ELSE 0 END) as ce_total,
+                   SUM(CASE WHEN type='PE' THEN oi ELSE 0 END) as pe_total
+            FROM option_chain 
+            WHERE timestamp >= ?
+            GROUP BY timestamp
+            ORDER BY timestamp ASC
+        '''
+        cursor.execute(query, (start_of_day,))
+        rows = cursor.fetchall()
+        conn.close()
+
+        for r in rows:
+            history.append({
+                'time': r[0],
+                'ce_change': r[1],
+                'pe_change': r[2],
+                'ce_total': r[3],
+                'pe_total': r[4]
+            })
+            
+    except Exception as e:
+        print(f"OI History Error for {symbol}: {e}")
+        return jsonify({"error": str(e)})
+
+    return jsonify(history)
+
 @app.route('/api/signal_history')
 def get_signal_history():
     """Fetches valid signals from the last 24 hours."""
