@@ -563,11 +563,8 @@
                                 renderFullChain(symbolData.chain);
                                 updateAnalysisHeader(symbolData);
                             } else if (currentView === 'signals') {
-                                // Gauges are updated via setInterval(updateSignals) mostly, 
-                                // but we can force it here if we passed 'data' to it.
-                                // Actually, updateSignals() fetches its own data.
-                                // Let's just make sure History is fetched.
-                                fetchHistory();
+                                updateSignals(); // Gauges
+                                fetchSignalHistory(); // Feed
                             } else if (currentView === 'charts') {
                                 renderAllCharts();
                             }
@@ -934,15 +931,6 @@
                 let action = '<span class="text-slate-500 font-mono">NEUTRAL</span>';
                 let rowClass = 'hover:bg-slate-900/50 transition-colors';
 
-
-                if (bullCount >= 2 && bearCount === 0) {
-                    action = '<div class="text-emerald-400 font-bold text-[9px] leading-tight">BUY<br>CALL</div>';
-                    rowClass = 'bg-emerald-950/20';
-                } else if (bearCount >= 2 && bullCount === 0) {
-                    action = '<div class="text-rose-400 font-bold text-[9px] leading-tight">BUY<br>PUT</div>';
-                    rowClass = 'bg-rose-950/20';
-                }
-
                 // Helper for cells
                 const badge = (status, val) => {
                     let col = 'text-slate-400';
@@ -998,23 +986,37 @@
             try {
                 const res = await fetch('/api/signal_history');
                 const history = await res.json();
-                const container = document.getElementById('signals-container');
+                const container = document.getElementById('signal-history'); // Fixed ID
                 if (!container) return;
 
+                // Let's iterate all keys to show a combined feed or just current symbol
+                // Showing ALL is better for a "Feed"
+                let allLogs = [];
+                for (const [sym, logs] of Object.entries(history)) {
+                    logs.forEach(l => {
+                        l.symbol = sym;
+                        allLogs.push(l);
+                    });
+                }
+
+                // Sort by time desc
+                allLogs.sort((a, b) => new Date(b.time) - new Date(a.time));
+
                 let html = '';
-                if (history[currentSymbol] && history[currentSymbol].length > 0) {
-                    history[currentSymbol].forEach(log => {
+                if (allLogs.length > 0) {
+                    allLogs.slice(0, 50).forEach(log => {
                         const isBull = log.type === 'BULLISH';
+                        // Colors: Bull=Emerald, Bear=Rose
                         const color = isBull ? 'emerald' : 'rose';
                         const timeParts = log.time.split(' ')[1].split(':');
-                        const shortTime = `${timeParts[0]}:${timeParts[1]}`; // HH:MM
+                        const shortTime = `${timeParts[0]}:${timeParts[1]}`;
 
                         html += `
-                            <div class="glass border-l-4 border-${color}-500 p-3 rounded-r-lg shadow-sm flex items-start gap-3 group">
+                            <div class="glass border-l-4 border-${color}-500 p-3 rounded-r-lg shadow-sm flex items-start gap-3 group hover:bg-white/5 transition-all">
                                 <div class="text-[10px] items-center text-slate-500 font-mono pt-1 min-w-[35px]">${shortTime}</div>
                                 <div class="flex-1">
                                     <h4 class="font-bold text-slate-200 text-xs flex justify-between items-center">
-                                        <span>${log.strategy}</span>
+                                        <span>${log.symbol}</span>
                                         <span class="px-1.5 py-0.5 bg-${color}-500/10 text-${color}-400 text-[9px] font-bold rounded uppercase border border-${color}-500/20">${log.type}</span>
                                     </h4>
                                     <p class="text-[11px] text-slate-400 mt-0.5 leading-snug">${log.desc}</p>
@@ -1023,7 +1025,7 @@
                     });
                     container.innerHTML = html;
                 } else {
-                    container.innerHTML = '<div class="text-slate-500 text-xs text-center italic py-4">No signal history found for today.</div>';
+                    container.innerHTML = '<div class="text-slate-500 text-xs text-center italic py-4">No active signals yet.</div>';
                 }
             } catch (e) {
                 console.error("History fetch failed", e);
