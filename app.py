@@ -385,6 +385,50 @@ def calculate_signals(symbol, chain, spot, pcr, max_pain, atm_strike):
     elif trend_status == 'Bearish':
          signals.append({'type': 'BEARISH', 'strategy': 'Trend Alignment', 'desc': f"Market Structure is Bearish (Score: {trend_score})."})
 
+    # 5. Volume Anomaly (Spike Detection)
+    # Detect if any strike has unusually high volume (> 3x Avg)
+    avg_vol = sum(r.get('ce_vol', 0) + r.get('pe_vol', 0) for r in near_chain) / (len(near_chain) * 2 or 1)
+    if avg_vol > 1000: # Min threshold to avoid noise
+        vol_threshold = avg_vol * 3
+        for r in near_chain:
+            if r.get('ce_vol', 0) > vol_threshold:
+                signals.append({'type': 'BULLISH', 'strategy': 'Volume Spike', 'desc': f"High Call Volume at {r['strike']} ({int(r['ce_vol'])})" })
+            if r.get('pe_vol', 0) > vol_threshold:
+                signals.append({'type': 'BEARISH', 'strategy': 'Volume Spike', 'desc': f"High Put Volume at {r['strike']} ({int(r['pe_vol'])})" })
+
+    # 6. IV Skew (Fear Gauge)
+    # Compare ATM IVs
+    atm_row = next((r for r in near_chain if r['strike'] == atm_strike), None)
+    if atm_row:
+        ce_iv = atm_row.get('ce_iv', 0)
+        pe_iv = atm_row.get('pe_iv', 0)
+        if ce_iv > 0 and pe_iv > 0:
+            diff = ce_iv - pe_iv
+            if diff > 5:
+                signals.append({'type': 'BULLISH', 'strategy': 'IV Skew', 'desc': f"Call IV is higher (+{diff:.1f}). Upside hedging active."})
+            elif diff < -5:
+                signals.append({'type': 'BEARISH', 'strategy': 'IV Skew', 'desc': f"Put IV is higher ({diff:.1f}). Downside fear active."})
+
+    # 7. Support/Resistance Breakout (Logic)
+    # Find Max OI Strikes
+    max_ce_oi = 0
+    max_pe_oi = 0
+    res_strike = 0
+    sup_strike = 0
+    
+    for r in chain:
+        if r.get('ce_oi', 0) > max_ce_oi:
+            max_ce_oi = r.get('ce_oi', 0)
+            res_strike = r['strike']
+        if r.get('pe_oi', 0) > max_pe_oi:
+            max_pe_oi = r.get('pe_oi', 0)
+            sup_strike = r['strike']
+            
+    if spot > res_strike:
+        signals.append({'type': 'BULLISH', 'strategy': 'Breakout', 'desc': f"Price ({spot}) broke above Resistance ({res_strike})!"})
+    elif spot < sup_strike:
+        signals.append({'type': 'BEARISH', 'strategy': 'Breakout', 'desc': f"Price ({spot}) broke below Support ({sup_strike})!"})
+
     # --- 5. Composite Confluence Score (-10 to +10) ---
     # Weight: Flow(40%), Trend(30%), PCR(20%), MaxPain(10%)
     
