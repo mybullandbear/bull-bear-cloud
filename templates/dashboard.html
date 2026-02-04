@@ -1072,11 +1072,11 @@
                         toolbar: { show: false },
                         animations: { enabled: true, easing: 'easeinout', speed: 800 }
                     },
-                    colors: ['#34d399', '#f43f5e', '#818cf8'], // Brighter Emerald, Rose, Indigo
-                    stroke: { curve: 'smooth', width: [2, 2, 3], dashArray: [0, 0, 0] },
+                    colors: ['#34d399', '#f43f5e', '#fbbf24'], // Emerald, Rose, Amber (Spot)
+                    stroke: { curve: 'smooth', width: [2, 2, 4], dashArray: [0, 0, 0] },
                     fill: {
-                        type: ['solid', 'solid', 'gradient'],
-                        gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 100] }
+                        type: ['solid', 'solid', 'solid'], // Solid lines for all
+                        opacity: [1, 1, 1]
                     },
                     dataLabels: { enabled: false },
                     grid: {
@@ -1090,12 +1090,19 @@
                             show: true,
                             style: { colors: '#94a3b8', fontSize: '11px', fontFamily: 'JetBrains Mono' },
                             rotate: 0,
-                            hideOverlappingLabels: true
+                            hideOverlappingLabels: true,
+                            formatter: function (val) {
+                                // Only show 09:15, 10:00, 11:00... 15:30
+                                if (!val) return '';
+                                if (val === '09:15' || val === '15:30') return val;
+                                if (val.endsWith(':00')) return val; // Hourly ticks
+                                return '';
+                            }
                         },
                         axisBorder: { show: false },
                         axisTicks: { show: false },
                         tooltip: { enabled: false },
-                        tickAmount: 6
+                        tickAmount: undefined // Let formatter handle it
                     },
                     yaxis: [
                         {
@@ -1115,7 +1122,7 @@
                             opposite: true,
                             show: true,
                             labels: {
-                                style: { colors: '#818cf8', fontSize: '10px', fontFamily: 'JetBrains Mono', fontWeight: 'bold' },
+                                style: { colors: '#fbbf24', fontSize: '11px', fontFamily: 'JetBrains Mono', fontWeight: 'bold' },
                                 formatter: (val) => val ? val.toFixed(0) : ''
                             }
                         }
