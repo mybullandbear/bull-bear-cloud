@@ -343,6 +343,14 @@
             </svg>
             <span class="text-[10px] font-bold tracking-wide">Deep Dive</span>
         </button>
+        <button onclick="switchView('signals')" id="mob-btn-signals"
+            class="flex-1 py-3 flex flex-col items-center justify-center gap-1 text-slate-500 transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z">
+                </path>
+            </svg>
+            <span class="text-[10px] font-bold tracking-wide">Signals</span>
+        </button>
         <a href="{{ '/api/logout' if fyers_connected else '/connect' }}"
             class="flex-1 py-3 flex flex-col items-center justify-center gap-1 text-slate-500 transition-colors">
             <svg class="w-6 h-6 {{ 'text-emerald-500' if fyers_connected else 'text-rose-500' }}" fill="none"
@@ -383,17 +391,13 @@
             // Toggle Content
             const vOverview = document.getElementById('view-overview');
             const vAnalysis = document.getElementById('view-analysis');
+            const vSignals = document.getElementById('view-signals');
 
-            if (view === 'overview') {
-                vAnalysis.classList.add('hidden');
-                vOverview.classList.remove('hidden');
-                setTimeout(() => vOverview.classList.add('fade-in-up'), 10); // Re-trigger animation
-            } else {
-                vOverview.classList.add('hidden');
-                vOverview.classList.remove('fade-in-up');
-                vAnalysis.classList.remove('hidden');
-                vAnalysis.classList.add('fade-in-up');
-            }
+            [vOverview, vAnalysis, vSignals].forEach(el => el.classList.add('hidden'));
+
+            if (view === 'overview') vOverview.classList.remove('hidden');
+            else if (view === 'analysis') vAnalysis.classList.remove('hidden');
+            else if (view === 'signals') vSignals.classList.remove('hidden');
 
             // Toggle Buttons (Desktop)
             const btnOver = document.getElementById('btn-overview');
@@ -401,26 +405,27 @@
             // Toggle Buttons (Mobile)
             const mobOver = document.getElementById('mob-btn-overview');
             const mobAnal = document.getElementById('mob-btn-analysis');
+            const mobSig = document.getElementById('mob-btn-signals');
 
             const activeClass = "px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 transform scale-105";
             const inactiveClass = "px-4 py-1.5 rounded-md text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-slate-800";
 
+            // Reset Mobile
+            [mobOver, mobAnal, mobSig].forEach(b => {
+                b.classList.remove('text-indigo-400');
+                b.classList.add('text-slate-500');
+            });
+
             if (view === 'overview') {
-                btnOver.className = activeClass;
-                btnAnal.className = inactiveClass;
-                // Mobile
+                if (btnOver) btnOver.className = activeClass;
+                if (btnAnal) btnAnal.className = inactiveClass;
                 mobOver.classList.add('text-indigo-400');
-                mobOver.classList.remove('text-slate-500');
-                mobAnal.classList.add('text-slate-500');
-                mobAnal.classList.remove('text-indigo-400');
-            } else {
-                btnOver.className = inactiveClass;
-                btnAnal.className = activeClass;
-                // Mobile
+            } else if (view === 'analysis') {
+                if (btnOver) btnOver.className = inactiveClass;
+                if (btnAnal) btnAnal.className = activeClass;
                 mobAnal.classList.add('text-indigo-400');
-                mobAnal.classList.remove('text-slate-500');
-                mobOver.classList.add('text-slate-500');
-                mobOver.classList.remove('text-indigo-400');
+            } else if (view === 'signals') {
+                mobSig.classList.add('text-indigo-400');
             }
             updateUI();
         }
@@ -442,12 +447,16 @@
                     if (currentView === 'overview') {
                         renderSummaryCards(data);
                     } else {
-                        // Analysis View
                         if (data[currentSymbol]) {
                             const symbolData = data[currentSymbol];
-                            updateSpotPrice(symbolData.spot);
-                            renderFullChain(symbolData.chain);
-                            updateAnalysisHeader(symbolData);
+
+                            if (currentView === 'analysis') {
+                                updateSpotPrice(symbolData.spot);
+                                renderFullChain(symbolData.chain);
+                                updateAnalysisHeader(symbolData);
+                            } else if (currentView === 'signals') {
+                                renderSignals(symbolData.alerts || []);
+                            }
                         }
                     }
                 }
