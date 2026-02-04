@@ -51,7 +51,24 @@ def init_dbs():
         ''')
         conn.commit()
         conn.close()
+        conn.commit()
+        conn.close()
         print(f"DEBUG: Initialized DB for {symbol} at {db_path}", flush=True)
+
+    # Create Signals DB (Global or per symbol? Per symbol is consistent)
+    for symbol, db_path in DB_FILES.items():
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS signals (
+                timestamp DATETIME,
+                type TEXT,
+                strategy TEXT,
+                description TEXT
+            )
+        ''')
+        conn.commit()
+        conn.close()
 
 def save_to_db(symbol, chain_data):
     """
@@ -96,6 +113,31 @@ def save_to_db(symbol, chain_data):
         
     except Exception as e:
         print(f"Error saving to DB for {symbol}: {e}", flush=True)
+
+    except Exception as e:
+        print(f"Error saving to DB for {symbol}: {e}", flush=True)
+
+def save_signals_to_db(symbol, signals):
+    """Saves generated signals to the database."""
+    if not signals: return
+
+    db_path = DB_FILES.get(symbol)
+    if not db_path: return
+
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        records = []
+        for sig in signals:
+            records.append((timestamp, sig['type'], sig['strategy'], sig['desc']))
+            
+        cursor.executemany('INSERT INTO signals (timestamp, type, strategy, description) VALUES (?, ?, ?, ?)', records)
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error saving signals for {symbol}: {e}")
 
 # Initialize DBs on start
 init_dbs()
@@ -578,8 +620,8 @@ def data_worker():
                     # Push Notification (First urgent signal only)
                     if market_data['NIFTY']['alerts']:
                         top_alert = market_data['NIFTY']['alerts'][0]
-                        # Only send if new? (Logic omitted for brevity, sending log)
                         print(f"SIGNAL: {top_alert['strategy']} - {top_alert['type']}", flush=True)
+                        save_signals_to_db('NIFTY', market_data['NIFTY']['alerts'])
                     
                     save_to_db('NIFTY', chain_data)
                 else:
@@ -615,6 +657,7 @@ def data_worker():
                     for alert in market_data['BANKNIFTY']['alerts']:
                         send_fcm_alert("BANKNIFTY Alert", alert)
                     
+                    save_signals_to_db('BANKNIFTY', market_data['BANKNIFTY']['alerts'])
                     save_to_db('BANKNIFTY', chain_data)
 
             # FINNIFTY
@@ -644,6 +687,7 @@ def data_worker():
                     market_data['FINNIFTY']['max_pain'] = calculate_max_pain(chain_data)
                     market_data['FINNIFTY']['alerts'], market_data['FINNIFTY']['matrix'] = calculate_signals('FINNIFTY', chain_data, spot, pcr, market_data['FINNIFTY']['max_pain'], atm_strike)
                     
+                    save_signals_to_db('FINNIFTY', market_data['FINNIFTY']['alerts'])
                     save_to_db('FINNIFTY', chain_data)
 
             print("DEBUG: Cycle Complete. Sleeping 60s...", flush=True)
@@ -746,6 +790,29 @@ def logout():
 def get_option_chain():
     """Returns the latest market data."""
     return jsonify(market_data)
+
+@app.route('/api/signal_history')
+def get_signal_history():
+    """Fetches valid signals from the last 24 hours."""
+    history = {}
+    try:
+        limit_date = (datetime.now() - timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
+        for symbol, db_path in DB_FILES.items():
+            if os.path.exists(db_path):
+                conn = sqlite3.connect(db_path)
+                cursor = conn.cursor()
+                cursor.execute("SELECT timestamp, type, strategy, description FROM signals WHERE timestamp > ? ORDER BY timestamp DESC LIMIT 50", (limit_date,))
+                rows = cursor.fetchall()
+                conn.close()
+                
+                history[symbol] = [
+                    {'time': r[0], 'type': r[1], 'strategy': r[2], 'desc': r[3]} for r in rows
+                ]
+    except Exception as e:
+        print(f"History Error: {e}")
+        return jsonify({"error": str(e)})
+
+    return jsonify(history)
 
 @app.route('/full_chain')
 def full_chain_page():
