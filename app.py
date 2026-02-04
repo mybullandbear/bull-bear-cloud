@@ -72,6 +72,19 @@ def init_dbs():
         conn.commit()
         conn.close()
 
+    # Create Market History DB (New! For Spot Price Chart)
+    for symbol, db_path in DB_FILES.items():
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS market_history (
+                timestamp DATETIME,
+                price REAL
+            )
+        ''')
+        conn.commit()
+        conn.close()
+
 def save_to_db(symbol, chain_data):
     """
     Saves a snapshot of the option chain to the respective SQLite DB.
@@ -658,6 +671,7 @@ def data_worker():
                     
                     save_signals_to_db('BANKNIFTY', market_data['BANKNIFTY']['alerts'])
                     save_to_db('BANKNIFTY', chain_data)
+                    save_market_price('BANKNIFTY', spot)
 
             # FINNIFTY
             if 'FINNIFTY' in spot_prices:
@@ -688,6 +702,7 @@ def data_worker():
                     
                     save_signals_to_db('FINNIFTY', market_data['FINNIFTY']['alerts'])
                     save_to_db('FINNIFTY', chain_data)
+                    save_market_price('FINNIFTY', spot)
 
             print("DEBUG: Cycle Complete. Sleeping 60s...", flush=True)
             time.sleep(60)
@@ -803,35 +818,46 @@ def get_oi_history():
     try:
         # Get data from today (midnight onwards) - IST
         start_of_day = get_ist_now().strftime('%Y-%m-%d 00:00:00')
-        
+        market_start = get_ist_now().strftime('%Y-%m-%d 09:15:00')
+        market_end = get_ist_now().strftime('%Y-%m-%d 15:30:00')
+
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
-        # Aggregate by timestamp: Sum of CE & PE Change
-        # We perform a GROUP BY timestamp to get total market view per minute
-        query = '''
+        # 1. Fetch Option OI Data (Aggregated)
+        query_oi = '''
             SELECT timestamp, 
                    SUM(CASE WHEN type='CE' THEN oich ELSE 0 END) as ce_change,
-                   SUM(CASE WHEN type='PE' THEN oich ELSE 0 END) as pe_change,
-                   SUM(CASE WHEN type='CE' THEN oi ELSE 0 END) as ce_total,
-                   SUM(CASE WHEN type='PE' THEN oi ELSE 0 END) as pe_total
+                   SUM(CASE WHEN type='PE' THEN oich ELSE 0 END) as pe_change
             FROM option_chain 
             WHERE timestamp >= ?
             GROUP BY timestamp
             ORDER BY timestamp ASC
         '''
-        cursor.execute(query, (start_of_day,))
-        rows = cursor.fetchall()
+        cursor.execute(query_oi, (start_of_day,))
+        oi_rows = cursor.fetchall()
+        
+        # 2. Fetch Spot Price Data
+        cursor.execute("SELECT timestamp, price FROM market_history WHERE timestamp >= ? ORDER BY timestamp ASC", (start_of_day,))
+        price_rows = cursor.fetchall()
+        
         conn.close()
 
-        for r in rows:
-            history.append({
-                'time': r[0],
-                'ce_change': r[1],
-                'pe_change': r[2],
-                'ce_total': r[3],
-                'pe_total': r[4]
-            })
+        # Convert to dictionary for easy merging
+        price_map = {r[0]: r[1] for r in price_rows}
+        
+        # Merge Data
+        for r in oi_rows:
+            ts = r[0]
+            # Filter Time: 09:15 to 15:30
+            time_part = ts.split(' ')[1] # HH:MM:SS
+            if "09:15:00" <= time_part <= "15:30:00":
+                history.append({
+                    'time': ts,
+                    'ce_change': r[1],
+                    'pe_change': r[2],
+                    'price': price_map.get(ts, None) # Might be None if not synced perfectly, frontend handles null
+                })
             
     except Exception as e:
         print(f"OI History Error for {symbol}: {e}")
