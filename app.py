@@ -85,14 +85,16 @@ def init_dbs():
         conn.commit()
         conn.close()
 
-def save_to_db(symbol, chain_data):
+def save_to_db(symbol, chain_data, timestamp=None):
     """
     Saves a snapshot of the option chain to the respective SQLite DB.
     """
     if not chain_data:
         return
 
-    timestamp = get_ist_now().strftime('%Y-%m-%d %H:%M:%S')
+    if not timestamp:
+        timestamp = get_ist_now().strftime('%Y-%m-%d %H:%M:%S')
+        
     db_path = DB_FILES.get(symbol)
     
     if not db_path:
@@ -129,14 +131,16 @@ def save_to_db(symbol, chain_data):
     except Exception as e:
         print(f"Error saving to DB for {symbol}: {e}", flush=True)
 
-def save_signals_to_db(symbol, signals):
+def save_signals_to_db(symbol, signals, timestamp=None):
     """Saves generated signals to the database."""
     if not signals: return
 
     db_path = DB_FILES.get(symbol)
     if not db_path: return
 
-    timestamp = get_ist_now().strftime('%Y-%m-%d %H:%M:%S')
+    if not timestamp:
+        timestamp = get_ist_now().strftime('%Y-%m-%d %H:%M:%S')
+
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
@@ -150,6 +154,24 @@ def save_signals_to_db(symbol, signals):
         conn.close()
     except Exception as e:
         print(f"Error saving signals for {symbol}: {e}")
+
+def save_market_price(symbol, spot_price, timestamp=None):
+    """Saves the spot price to the database for charting."""
+    if not spot_price: return
+    db_path = DB_FILES.get(symbol)
+    if not db_path: return
+    
+    if not timestamp:
+        timestamp = get_ist_now().strftime('%Y-%m-%d %H:%M:%S')
+
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute('INSERT INTO market_history (timestamp, price) VALUES (?, ?)', (timestamp, spot_price))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error saving market price for {symbol}: {e}")
 
 # Initialize DBs on start
 init_dbs()
@@ -589,15 +611,13 @@ def data_worker():
             nifty_date = get_next_tuesday()
             nifty_expiry = get_expiry_code(nifty_date)
 
-            # 2. Expiry Calculations
-            nifty_date = get_next_tuesday()
-            nifty_expiry = get_expiry_code(nifty_date)
-
             monthly_date = get_monthly_tuesday()
             monthly_expiry = get_expiry_code(monthly_date, force_monthly=True)
             
             # --- Fetch All Chains ---
             time.sleep(1) 
+            # --- Generate Synchronized Timestamp ---
+            current_timestamp = get_ist_now().strftime('%Y-%m-%d %H:%M:%S')
             
             # NIFTY
             if 'NIFTY' in spot_prices:
@@ -626,16 +646,17 @@ def data_worker():
                     market_data['NIFTY']['pcr'] = pcr
                     market_data['NIFTY']['sentiment'] = senti
                     market_data['NIFTY']['max_pain'] = calculate_max_pain(chain_data)
-                    market_data['NIFTY']['max_pain'] = calculate_max_pain(chain_data)
                     market_data['NIFTY']['alerts'], market_data['NIFTY']['matrix'] = calculate_signals('NIFTY', chain_data, spot, pcr, market_data['NIFTY']['max_pain'], atm_strike)
                     
                     # Push Notification (First urgent signal only)
                     if market_data['NIFTY']['alerts']:
                         top_alert = market_data['NIFTY']['alerts'][0]
                         print(f"SIGNAL: {top_alert['strategy']} - {top_alert['type']}", flush=True)
-                        save_signals_to_db('NIFTY', market_data['NIFTY']['alerts'])
+                        send_fcm_alert("NIFTY Alert", f"{top_alert['strategy']} - {top_alert['type']}: {top_alert['desc']}")
+                        save_signals_to_db('NIFTY', market_data['NIFTY']['alerts'], current_timestamp)
                     
-                    save_to_db('NIFTY', chain_data)
+                    save_to_db('NIFTY', chain_data, current_timestamp)
+                    save_market_price('NIFTY', spot, current_timestamp)
                 else:
                     pass
 
@@ -666,12 +687,13 @@ def data_worker():
                     market_data['BANKNIFTY']['alerts'], market_data['BANKNIFTY']['matrix'] = calculate_signals('BANKNIFTY', chain_data, spot, pcr, market_data['BANKNIFTY']['max_pain'], atm_strike)
 
                     # Push Notification
-                    for alert in market_data['BANKNIFTY']['alerts']:
-                        send_fcm_alert("BANKNIFTY Alert", alert)
+                    if market_data['BANKNIFTY']['alerts']:
+                        top_alert = market_data['BANKNIFTY']['alerts'][0]
+                        send_fcm_alert("BANKNIFTY Alert", f"{top_alert['strategy']} - {top_alert['type']}: {top_alert['desc']}")
                     
-                    save_signals_to_db('BANKNIFTY', market_data['BANKNIFTY']['alerts'])
-                    save_to_db('BANKNIFTY', chain_data)
-                    save_market_price('BANKNIFTY', spot)
+                    save_signals_to_db('BANKNIFTY', market_data['BANKNIFTY']['alerts'], current_timestamp)
+                    save_to_db('BANKNIFTY', chain_data, current_timestamp)
+                    save_market_price('BANKNIFTY', spot, current_timestamp)
 
             # FINNIFTY
             if 'FINNIFTY' in spot_prices:
@@ -697,12 +719,15 @@ def data_worker():
                     market_data['FINNIFTY']['pcr'] = pcr
                     market_data['FINNIFTY']['sentiment'] = senti
                     market_data['FINNIFTY']['max_pain'] = calculate_max_pain(chain_data)
-                    market_data['FINNIFTY']['max_pain'] = calculate_max_pain(chain_data)
                     market_data['FINNIFTY']['alerts'], market_data['FINNIFTY']['matrix'] = calculate_signals('FINNIFTY', chain_data, spot, pcr, market_data['FINNIFTY']['max_pain'], atm_strike)
                     
-                    save_signals_to_db('FINNIFTY', market_data['FINNIFTY']['alerts'])
-                    save_to_db('FINNIFTY', chain_data)
-                    save_market_price('FINNIFTY', spot)
+                    if market_data['FINNIFTY']['alerts']:
+                        top_alert = market_data['FINNIFTY']['alerts'][0]
+                        send_fcm_alert("FINNIFTY Alert", f"{top_alert['strategy']} - {top_alert['type']}: {top_alert['desc']}")
+
+                    save_signals_to_db('FINNIFTY', market_data['FINNIFTY']['alerts'], current_timestamp)
+                    save_to_db('FINNIFTY', chain_data, current_timestamp)
+                    save_market_price('FINNIFTY', spot, current_timestamp)
 
             print("DEBUG: Cycle Complete. Sleeping 60s...", flush=True)
             time.sleep(60)
