@@ -266,23 +266,21 @@ def calculate_signals(symbol, chain, spot, pcr, max_pain, atm_strike):
     Generates trading signals based on 4 strategies:
     1. PCR Sentiment
     2. Max Pain Reversion
-    3. OI Flow (Aggressive Writing)
-    4. Smart Money Trend (Buildup/Covering)
+    3. OI Flow (Aggressive Writing/Unwinding)
+    4. Smart Money Trend (Weighted Scoring)
     """
     signals = []
     if not chain or not atm_strike: return signals, {}
 
     # --- Robustness Check ---
-    # If API returns partial data (e.g. < 10 strikes), signals will fluctuate wildly.
     if len(chain) < 10:
-        print(f"WARNING: Insufficient chain data for signals ({len(chain)} strikes). Skipping.")
         return signals, {}
 
     # Thresholds
-    PCR_BULL = 1.2
-    PCR_BEAR = 0.8
+    PCR_BULL = 1.1
+    PCR_BEAR = 0.9
     MP_DIV = 100 if symbol == 'BANKNIFTY' else 50
-    OI_AGGR = 1.5
+    OI_AGGR_RATIO = 1.5
 
     # 1. PCR Signal
     if pcr >= PCR_BULL:
@@ -299,51 +297,84 @@ def calculate_signals(symbol, chain, spot, pcr, max_pain, atm_strike):
         signals.append({'type': 'BEARISH', 'strategy': 'Max Pain Reversion', 'desc': f"Price overbought above Max Pain ({max_pain}). Correction likely."})
 
     # 3. OI Flow Analysis (Near ATM)
-    threshold = atm_strike * 0.01 # 1% range
+    # Refined: Check for Unwinding vs Writing
+    threshold = atm_strike * 0.012 # 1.2% range
     near_chain = [r for r in chain if abs(r['strike'] - atm_strike) <= threshold]
     
     ce_chg_sum = sum(r.get('ce_oich', 0) for r in near_chain)
     pe_chg_sum = sum(r.get('pe_oich', 0) for r in near_chain)
 
-    if pe_chg_sum > (ce_chg_sum * OI_AGGR) and pe_chg_sum > 0:
-         signals.append({'type': 'BULLISH', 'strategy': 'OI Smart Money', 'desc': "Aggressive Put Writing detected (Support building)."})
-    elif ce_chg_sum > (pe_chg_sum * OI_AGGR) and ce_chg_sum > 0:
-         signals.append({'type': 'BEARISH', 'strategy': 'OI Smart Money', 'desc': "Aggressive Call Writing detected (Resistance building)."})
+    flow_status = "Balanced"
+    flow_desc = "Neutral activity"
+    is_flow_bull = False
+    is_flow_bear = False
 
-    # 4. Trend Analysis (Top 5 Strikes)
-    # Count trends for ATM +/- 2
-    strikes_to_check = [atm_strike - (2*step) for step in get_step(symbol)] if symbol else [] # Simplify: just check `near_chain`
+    # Scenario A: Call Unwinding (Bullish)
+    if ce_chg_sum < 0 and pe_chg_sum > 0:
+        flow_status = "Call Unwinding"
+        flow_desc = "Calls are exiting while Puts are being written."
+        is_flow_bull = True
+    # Scenario B: Put Unwinding (Bearish)
+    elif pe_chg_sum < 0 and ce_chg_sum > 0:
+        flow_status = "Put Unwinding"
+        flow_desc = "Puts are exiting while Calls are being written."
+        is_flow_bear = True
+    # Scenario C: Both Writing (Check Ratio)
+    elif ce_chg_sum > 0 and pe_chg_sum > 0:
+        if pe_chg_sum > (ce_chg_sum * OI_AGGR_RATIO):
+            flow_status = "Strong Put Writing"
+            is_flow_bull = True
+        elif ce_chg_sum > (pe_chg_sum * OI_AGGR_RATIO):
+            flow_status = "Strong Call Writing"
+            is_flow_bear = True
     
-    lb_count_ce = 0
-    sc_count_pe = 0
-    lb_count_pe = 0
-    sb_count_ce = 0
+    if is_flow_bull:
+        signals.append({'type': 'BULLISH', 'strategy': 'Smart Money Flow', 'desc': flow_desc})
+    elif is_flow_bear:
+        signals.append({'type': 'BEARISH', 'strategy': 'Smart Money Flow', 'desc': flow_desc})
+
+
+    # 4. Trend Analysis (Weighted Scoring)
+    # Score: LB-CE(+1), SB-PE(+1) | LB-PE(-1), SB-CE(-1) | SC-CE(+0.5), SC-PE(-0.5)
+    trend_score = 0
+    bull_count = 0
+    bear_count = 0
     
-    # We use near_chain (approx 5-10 strikes)
     for row in near_chain:
-        if row.get('ce_trend') == 'Long Buildup': lb_count_ce += 1
-        if row.get('pe_trend') == 'Short Covering': sc_count_pe += 1
-        
-        if row.get('pe_trend') == 'Long Buildup': lb_count_pe += 1
-        if row.get('ce_trend') == 'Short Buildup': sb_count_ce += 1
+        ce_t = row.get('ce_trend', 'Neutral')
+        pe_t = row.get('pe_trend', 'Neutral')
 
-    # Bullish: CE Long Buildup OR PE Short Covering dominance
-    if (lb_count_ce + sc_count_pe) >= 3:
-        signals.append({'type': 'BULLISH', 'strategy': 'Trend Alignment', 'desc': "Majority strikes showing Bullish Trend (LB/SC)."})
-        
-    # Bearish: PE Long Buildup OR CE Short Buildup dominance
-    # Bearish: PE Long Buildup OR CE Short Buildup dominance
-    if (lb_count_pe + sb_count_ce) >= 3:
-        signals.append({'type': 'BEARISH', 'strategy': 'Trend Alignment', 'desc': "Majority strikes showing Bearish Trend (LB/SB)."})
+        # CE Analysis
+        if ce_t == 'Long Buildup': trend_score += 1; bull_count += 1
+        elif ce_t == 'Short Buildup': trend_score -= 1; bear_count += 1
+        elif ce_t == 'Short Covering': trend_score += 0.5 # Weak Bullish (Resist weakening)
+        elif ce_t == 'Long Unwinding': trend_score -= 0.5 # Weak Bearish
+
+        # PE Analysis
+        if pe_t == 'Short Buildup': trend_score += 1; bull_count += 1 # Selling Puts = Bullish
+        elif pe_t == 'Long Buildup': trend_score -= 1; bear_count += 1 # Buying Puts = Bearish
+        elif pe_t == 'Short Covering': trend_score -= 0.5 # Weak Bearish (Support weakening)
+        elif pe_t == 'Long Unwinding': trend_score += 0.5 # Weak Bullish
+
+    trend_status = 'Neutral'
+    if trend_score >= 2.5: 
+        trend_status = 'Bullish'
+    elif trend_score <= -2.5:
+        trend_status = 'Bearish'
+
+    if trend_status == 'Bullish':
+        signals.append({'type': 'BULLISH', 'strategy': 'Trend Alignment', 'desc': f"Market Structure is Bullish (Score: {trend_score})."})
+    elif trend_status == 'Bearish':
+         signals.append({'type': 'BEARISH', 'strategy': 'Trend Alignment', 'desc': f"Market Structure is Bearish (Score: {trend_score})."})
 
     # --- Matrix Status Construction ---
     matrix = {
         'pcr': {'val': pcr, 'status': 'Bullish' if pcr >= PCR_BULL else ('Bearish' if pcr <= PCR_BEAR else 'Neutral')},
         'max_pain': {'val': max_pain, 'status': 'Bullish' if (spot < max_pain - MP_DIV) else ('Bearish' if (spot > max_pain + MP_DIV) else 'Neural')},
-        'oi_flow': {'val': 'PE Writing' if (pe_chg_sum > ce_chg_sum*OI_AGGR) else ('CE Writing' if (ce_chg_sum > pe_chg_sum*OI_AGGR) else 'Balanced'),
-                    'status': 'Bullish' if (pe_chg_sum > ce_chg_sum*OI_AGGR) else ('Bearish' if (ce_chg_sum > pe_chg_sum*OI_AGGR) else 'Neutral')},
-        'trend': {'val': f"{lb_count_ce+sc_count_pe} vs {lb_count_pe+sb_count_ce}", 
-                  'status': 'Bullish' if (lb_count_ce + sc_count_pe) >= 3 else ('Bearish' if (lb_count_pe + sb_count_ce) >= 3 else 'Neutral')}
+        'oi_flow': {'val': flow_status, 
+                    'status': 'Bullish' if is_flow_bull else ('Bearish' if is_flow_bear else 'Neutral')},
+        'trend': {'val': f"Score: {trend_score}", 
+                  'status': trend_status}
     }
 
     return signals, matrix
