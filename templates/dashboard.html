@@ -481,6 +481,7 @@
                                 updateAnalysisHeader(symbolData);
                             } else if (currentView === 'signals') {
                                 renderSignalMatrix(data);
+                                fetchSignalHistory(); // Load history
                             }
                         }
                     }
@@ -901,7 +902,44 @@
             });
 
             tbody.innerHTML = rows;
-            logContainer.innerHTML = logs || '<div class="text-slate-500 text-sm text-center italic py-2">No active alerts.</div>';
+            // Logs are now handled by history API
+            // logContainer.innerHTML = logs || '<div class="text-slate-500 text-sm text-center italic py-2">No active alerts.</div>';
+        }
+
+        async function fetchSignalHistory() {
+            try {
+                const res = await fetch('/api/signal_history');
+                const history = await res.json();
+                const container = document.getElementById('signals-container');
+                if (!container) return;
+
+                let html = '';
+                if (history[currentSymbol] && history[currentSymbol].length > 0) {
+                    history[currentSymbol].forEach(log => {
+                        const isBull = log.type === 'BULLISH';
+                        const color = isBull ? 'emerald' : 'rose';
+                        const timeParts = log.time.split(' ')[1].split(':');
+                        const shortTime = `${timeParts[0]}:${timeParts[1]}`; // HH:MM
+
+                        html += `
+                            <div class="glass border-l-4 border-${color}-500 p-3 rounded-r-lg shadow-sm flex items-start gap-3 group">
+                                <div class="text-[10px] items-center text-slate-500 font-mono pt-1 min-w-[35px]">${shortTime}</div>
+                                <div class="flex-1">
+                                    <h4 class="font-bold text-slate-200 text-xs flex justify-between items-center">
+                                        <span>${log.strategy}</span>
+                                        <span class="px-1.5 py-0.5 bg-${color}-500/10 text-${color}-400 text-[9px] font-bold rounded uppercase border border-${color}-500/20">${log.type}</span>
+                                    </h4>
+                                    <p class="text-[11px] text-slate-400 mt-0.5 leading-snug">${log.desc}</p>
+                                </div>
+                            </div>`;
+                    });
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = '<div class="text-slate-500 text-xs text-center italic py-4">No signal history found for today.</div>';
+                }
+            } catch (e) {
+                console.error("History fetch failed", e);
+            }
         }
     </script>
 </body>
