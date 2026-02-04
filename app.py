@@ -28,6 +28,10 @@ DB_FILES = {
     'FINNIFTY': os.path.join(DATA_DIR, 'finnifty.db')
 }
 
+def get_ist_now():
+    """Returns current time in IST (UTC+5:30)."""
+    return datetime.utcnow() + timedelta(hours=5, minutes=30)
+
 def init_dbs():
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
@@ -75,7 +79,7 @@ def save_to_db(symbol, chain_data):
     if not chain_data:
         return
 
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    timestamp = get_ist_now().strftime('%Y-%m-%d %H:%M:%S')
     db_path = DB_FILES.get(symbol)
     
     if not db_path:
@@ -119,7 +123,7 @@ def save_signals_to_db(symbol, signals):
     db_path = DB_FILES.get(symbol)
     if not db_path: return
 
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    timestamp = get_ist_now().strftime('%Y-%m-%d %H:%M:%S')
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
@@ -168,7 +172,7 @@ market_data = {
 
 def get_next_thursday():
     """Finds the next weekly expiry (Thursday)."""
-    today = datetime.now()
+    today = get_ist_now()
     days_ahead = 3 - today.weekday()  # Thursday is 3
     if days_ahead < 0: # Target day already happened this week
         days_ahead += 7
@@ -361,7 +365,7 @@ def get_expiry_code(date_obj, force_monthly=False):
 
 def get_next_tuesday():
     """Next Weekly Expiry (Tuesday)"""
-    today = datetime.now()
+    today = get_ist_now()
     days_ahead = 1 - today.weekday() # Tuesday is 1
     if days_ahead < 0: 
         days_ahead += 7
@@ -371,7 +375,7 @@ def get_next_tuesday():
 
 def get_monthly_tuesday():
     """Next Monthly Expiry (Last Tuesday of Month)"""
-    today = datetime.now()
+    today = get_ist_now()
     
     # helper to find last tuesday of a specific month
     def get_last_tue(d):
@@ -471,7 +475,7 @@ def fetch_option_chain_data(fyers, symbol, strike_count=40, atm_strike=None, int
 def cleanup_old_data():
     """Deletes records older than 7 days to save disk space."""
     try:
-        cutoff_date = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d %H:%M:%S')
+        cutoff_date = (get_ist_now() - timedelta(days=7)).strftime('%Y-%m-%d %H:%M:%S')
         databases = ['data/nifty.db', 'data/banknifty.db', 'data/finnifty.db']
         
         for db_path in databases:
@@ -797,8 +801,8 @@ def get_oi_history():
         return jsonify([])
 
     try:
-        # Get data from today (midnight onwards)
-        start_of_day = datetime.now().strftime('%Y-%m-%d 00:00:00')
+        # Get data from today (midnight onwards) - IST
+        start_of_day = get_ist_now().strftime('%Y-%m-%d 00:00:00')
         
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
@@ -840,7 +844,7 @@ def get_signal_history():
     """Fetches valid signals from the last 24 hours."""
     history = {}
     try:
-        limit_date = (datetime.now() - timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
+        limit_date = (get_ist_now() - timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
         for symbol, db_path in DB_FILES.items():
             if os.path.exists(db_path):
                 conn = sqlite3.connect(db_path)
