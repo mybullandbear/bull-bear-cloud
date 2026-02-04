@@ -41,30 +41,7 @@
             document.getElementById('error-text').innerText = "Failed to load ApexCharts Library. Check internet connection.";
         }
 
-        let currentView = 'overview';
-        let currentSymbol = 'NIFTY';
 
-        async function switchView(viewName) {
-            try {
-                // Hide all views
-                ['view-overview', 'view-analysis', 'view-signals', 'view-charts'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) el.classList.add('hidden');
-                });
-
-                // Show target
-                const target = document.getElementById('view-' + viewName);
-                if (target) {
-                    target.classList.remove('hidden');
-                    currentView = viewName;
-
-                    // Trigger immediate update
-                    updateUI();
-                }
-            } catch (e) {
-                console.error("Switch View Error:", e);
-            }
-        }
     </script>
     <script>
         tailwind.config = {
