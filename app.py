@@ -1078,24 +1078,39 @@ def get_oi_history():
             # Determine ATM
             # Simplistic ATM: Round to nearest step not strictly needed, just checking distance
             
-            ce_sum = 0
-            pe_sum = 0
+            ce_change_sum = 0
+            pe_change_sum = 0
+            ce_oi_sum = 0
+            pe_oi_sum = 0
             
             for r in rows:
                 strike = r[1]
                 otype = r[2] # CE/PE
                 oich = r[3]
+                oi = r[5] # The 'oi' column from SELECT query
                 
                 # Filter Condition: Strike is within +/- Range of Spot
                 if abs(strike - spot) <= range_limit:
-                    if otype == 'CE': ce_sum += oich
-                    elif otype == 'PE': pe_sum += oich
+                    if otype == 'CE': 
+                        ce_change_sum += oich
+                        ce_oi_sum += oi
+                    elif otype == 'PE': 
+                        pe_change_sum += oich
+                        pe_oi_sum += oi
+            
+            # Derived Metrics
+            pcr = round(pe_oi_sum / ce_oi_sum, 2) if ce_oi_sum > 0 else 0
+            diff_oi = ce_oi_sum - pe_oi_sum # CE - PE as requested
             
             history.append({
                 'time': ts,
-                'ce_change': ce_sum,
-                'pe_change': pe_sum,
-                'price': price_map.get(ts, None) # Send explicit None for price if missing, frontend handles it (gap in purple line)
+                'ce_change': ce_change_sum,
+                'pe_change': pe_change_sum,
+                'ce_oi': ce_oi_sum,
+                'pe_oi': pe_oi_sum,
+                'pcr': pcr,
+                'diff_oi': diff_oi,
+                'price': price_map.get(ts, None)
             })
             
         # Sort by time just in case dict unordered

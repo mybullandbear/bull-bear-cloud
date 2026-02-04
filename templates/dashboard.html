@@ -405,47 +405,69 @@
             </div>
 
             <div id="view-charts" class="absolute inset-0 p-3 overflow-y-auto hidden flex flex-col pt-20 pb-24">
-                <div class="flex justify-between items-end mb-6 px-1">
-                    <div>
-                        <h2 class="text-2xl font-bold text-white">Market Trends</h2>
-                        <p class="text-xs text-slate-500 font-mono">OI Change (Intraday)</p>
-                    </div>
-                    <!-- Legend -->
-                    <div
-                        class="flex gap-4 text-[10px] font-mono bg-slate-900/50 p-2 rounded-lg border border-slate-800">
-                        <div class="flex items-center gap-1"><span
-                                class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/30"></span>
-                            Put (Bull)</div>
-                        <div class="flex items-center gap-1"><span
-                                class="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-lg shadow-rose-500/30"></span> Call
-                            (Bear)</div>
+
+                <!-- Chart Header & Tabs -->
+                <div class="flex justify-between items-center mb-4 px-2">
+                    <h2 class="text-2xl font-bold text-white">Advanced Charts</h2>
+                    <div class="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
+                        <button onclick="switchChartSymbol('NIFTY')" id="tab-chart-NIFTY"
+                            class="px-4 py-1.5 rounded-md text-xs font-bold transition-all bg-indigo-600 text-white shadow-lg">NIFTY</button>
+                        <button onclick="switchChartSymbol('BANKNIFTY')" id="tab-chart-BANKNIFTY"
+                            class="px-4 py-1.5 rounded-md text-xs font-bold transition-all text-slate-400 hover:text-white">BANKNIFTY</button>
+                        <button onclick="switchChartSymbol('FINNIFTY')" id="tab-chart-FINNIFTY"
+                            class="px-4 py-1.5 rounded-md text-xs font-bold transition-all text-slate-400 hover:text-white">FINNIFTY</button>
                     </div>
                 </div>
 
-                <!-- Chart 1: NIFTY -->
-                <div class="mb-6">
-                    <h3 class="text-sm font-bold text-slate-300 mb-2 pl-2 border-l-2 border-indigo-500">NIFTY</h3>
-                    <div
-                        class="rounded-xl border border-slate-800 shadow-xl bg-slate-900/60 p-2 h-64 overflow-hidden relative backdrop-blur-sm">
-                        <div id="chart-NIFTY" class="w-full h-full"></div>
-                    </div>
-                </div>
+                <!-- Quad Chart Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pb-20">
 
-                <!-- Chart 2: BANKNIFTY -->
-                <div class="mb-6">
-                    <h3 class="text-sm font-bold text-slate-300 mb-2 pl-2 border-l-2 border-teal-500">BANKNIFTY</h3>
-                    <div
-                        class="rounded-xl border border-slate-800 shadow-xl bg-slate-900/60 p-2 h-64 overflow-hidden relative backdrop-blur-sm">
-                        <div id="chart-BANKNIFTY" class="w-full h-full"></div>
+                    <!-- 1. Total OI -->
+                    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-3 shadow-xl backdrop-blur-sm">
+                        <div class="flex justify-between items-center mb-2 px-1">
+                            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Total OI</h3>
+                            <div class="flex gap-2 text-[9px] font-mono">
+                                <span class="text-emerald-400">● Put</span>
+                                <span class="text-rose-400">● Call</span>
+                                <span class="text-slate-500">○ Price</span>
+                            </div>
+                        </div>
+                        <div id="chart-total-oi" class="w-full h-64"></div>
                     </div>
-                </div>
 
-                <!-- Chart 3: FINNIFTY -->
-                <div class="mb-6">
-                    <h3 class="text-sm font-bold text-slate-300 mb-2 pl-2 border-l-2 border-emerald-500">FINNIFTY</h3>
-                    <div
-                        class="rounded-xl border border-slate-800 shadow-xl bg-slate-900/60 p-2 h-64 overflow-hidden relative backdrop-blur-sm">
-                        <div id="chart-FINNIFTY" class="w-full h-full"></div>
+                    <!-- 2. Change in OI -->
+                    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-3 shadow-xl backdrop-blur-sm">
+                        <div class="flex justify-between items-center mb-2 px-1">
+                            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Change in OI</h3>
+                            <div class="flex gap-2 text-[9px] font-mono">
+                                <span class="text-emerald-400">● PE Chg</span>
+                                <span class="text-rose-400">● CE Chg</span>
+                            </div>
+                        </div>
+                        <div id="chart-change-oi" class="w-full h-64"></div>
+                    </div>
+
+                    <!-- 3. Difference (CE - PE) -->
+                    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-3 shadow-xl backdrop-blur-sm">
+                        <div class="flex justify-between items-center mb-2 px-1">
+                            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Diff in OI (CE - PE)
+                            </h3>
+                            <div class="flex gap-2 text-[9px] font-mono">
+                                <span class="text-cyan-400">● Net Diff</span>
+                            </div>
+                        </div>
+                        <div id="chart-diff-oi" class="w-full h-64"></div>
+                    </div>
+
+                    <!-- 4. PCR Trend -->
+                    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-3 shadow-xl backdrop-blur-sm">
+                        <div class="flex justify-between items-center mb-2 px-1">
+                            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">PCR Trend</h3>
+                            <div class="flex gap-2 text-[9px] font-mono">
+                                <span class="text-emerald-400">● PCR</span>
+                            </div>
+                        </div>
+                        <div id="chart-pcr-trend" class="w-full h-64"></div>
                     </div>
                 </div>
             </div>
@@ -1206,14 +1228,18 @@
         updateSignals();
 
         // --- Charting ---
-        let charts = {
-            'NIFTY': null,
-            'BANKNIFTY': null,
-            'FINNIFTY': null
-        };
+        let activeChartSymbol = 'NIFTY';
+        let advancedCharts = {};
 
-        async function renderAllCharts() {
-            ['NIFTY', 'BANKNIFTY', 'FINNIFTY'].forEach(sym => fetchAndRenderChart(sym));
+        function switchChartSymbol(sym) {
+            activeChartSymbol = sym;
+            ['NIFTY', 'BANKNIFTY', 'FINNIFTY'].forEach(s => {
+                const btn = document.getElementById(`tab-chart-${s}`);
+                if (btn) btn.className = (s === sym)
+                    ? "px-4 py-1.5 rounded-md text-xs font-bold transition-all bg-indigo-600 text-white shadow-lg transform scale-105"
+                    : "px-4 py-1.5 rounded-md text-xs font-bold transition-all text-slate-400 hover:text-white bg-slate-800/50";
+            });
+            renderAdvancedCharts(sym);
         }
 
         async function fetchAndRenderChart(symbol) {
@@ -1363,6 +1389,135 @@
                 console.error(`Chart Error ${symbol}:`, e);
             }
         }
+        async function renderAdvancedCharts(symbol) {
+            try {
+                const res = await fetch(`/api/oi_history?symbol=${symbol}`);
+                let data = await res.json();
+                if (!data) data = [];
+
+                // --- 1. Prepare X-Axis (Time Slots) ---
+                const fullTimeSlots = [];
+                let start = new Date(); start.setHours(9, 15, 0, 0);
+                const end = new Date(); end.setHours(15, 30, 0, 0);
+                while (start <= end) {
+                    const hh = start.getHours().toString().padStart(2, '0');
+                    const mm = start.getMinutes().toString().padStart(2, '0');
+                    fullTimeSlots.push(`${hh}:${mm}`);
+                    start.setMinutes(start.getMinutes() + 1);
+                }
+
+                const dataMap = {};
+                data.forEach(d => {
+                    const t = d.time.split(' ')[1].substring(0, 5);
+                    dataMap[t] = d;
+                });
+
+                // Align Check: Use generated slots or actual data if filtering active
+                const cats = fullTimeSlots;
+
+                // Helper to get array
+                const getArr = (key) => cats.map(t => dataMap[t] ? dataMap[t][key] : null);
+
+                const prices = getArr('price');
+                const peOI = getArr('pe_oi');
+                const ceOI = getArr('ce_oi');
+                const peChg = getArr('pe_change');
+                const ceChg = getArr('ce_change');
+                const diffOI = getArr('diff_oi');
+                const pcr = getArr('pcr');
+
+                // --- 2. Create/Update Charts ---
+
+                // A. Total OI
+                createOrUpdateChart('chart-total-oi', 'total',
+                    [{ name: 'Put OI', type: 'line', data: peOI }, { name: 'Call OI', type: 'line', data: ceOI }, { name: 'Price', type: 'area', data: prices }],
+                    ['#10b981', '#f43f5e', 'rgba(251, 191, 36, 0.15)'], true
+                );
+
+                // B. Change OI
+                createOrUpdateChart('chart-change-oi', 'change',
+                    [{ name: 'Put Chg', type: 'line', data: peChg }, { name: 'Call Chg', type: 'line', data: ceChg }, { name: 'Price', type: 'area', data: prices }],
+                    ['#10b981', '#f43f5e', 'rgba(251, 191, 36, 0.15)'], true
+                );
+
+                // C. Diff OI
+                createOrUpdateChart('chart-diff-oi', 'diff',
+                    [{ name: 'Net Diff', type: 'line', data: diffOI }, { name: 'Price', type: 'area', data: prices }],
+                    ['#22d3ee', 'rgba(251, 191, 36, 0.15)'], true
+                );
+
+                // D. PCR Trend
+                createOrUpdateChart('chart-pcr-trend', 'pcr',
+                    [{ name: 'PCR', type: 'line', data: pcr }, { name: 'Price', type: 'area', data: prices }],
+                    ['#a855f7', 'rgba(251, 191, 36, 0.15)'], true
+                );
+
+
+            } catch (e) { console.error("Chart Render Error", e); }
+        }
+
+        function createOrUpdateChart(id, key, series, colors, dualAxis) {
+            const el = document.getElementById(id);
+            if (!el) return;
+
+            const commonOpts = {
+                chart: { type: 'line', height: '100%', background: 'transparent', toolbar: { show: false }, fontFamily: 'Outfit, sans-serif', animations: { enabled: false } },
+                stroke: { curve: 'monotoneCubic', width: [2, 2, 0] },
+                fill: { type: 'solid', opacity: [1, 1, 0.1] },
+                dataLabels: { enabled: false },
+                xaxis: {
+                    categories: [],
+                    labels: { style: { colors: '#64748b', fontSize: '10px', fontFamily: 'JetBrains Mono' }, rotate: 0, formatter: (v) => (v && (v.endsWith(':00') || v == '09:15' || v == '15:30')) ? v : '' },
+                    axisBorder: { show: false }, axisTicks: { show: false }, tooltip: { enabled: false }
+                },
+                grid: { borderColor: '#1e293b', strokeDashArray: 3, padding: { top: 10, right: 10, bottom: 5, left: 10 } },
+                legend: { show: false },
+                colors: colors,
+                tooltip: { theme: 'dark', x: { show: true } }
+            };
+
+            // Dual Axis logic (Price is always last series - Index 2 or 1)
+            let yaxisConfig = [];
+            const mainLabelStyle = { style: { colors: '#94a3b8', fontSize: '10px', fontFamily: 'JetBrains Mono' }, formatter: (v) => v ? (v / 1000).toFixed(0) + 'k' : '' };
+            const priceLabelStyle = { style: { colors: '#fbbf24', fontSize: '10px' }, formatter: (v) => v ? v.toFixed(0) : '' };
+
+            if (dualAxis) {
+                // If 3 series (PE, CE, Price)
+                if (series.length === 3) {
+                    yaxisConfig = [
+                        { seriesName: series[0].name, labels: mainLabelStyle },
+                        { seriesName: series[0].name, show: false }, // Link 2nd axis to 1st
+                        { seriesName: 'Price', opposite: true, labels: priceLabelStyle }
+                    ];
+                }
+                // If 2 series (Diff, Price) / (PCR, Price)
+                else {
+                    let labelFormatter = mainLabelStyle;
+                    if (key === 'pcr') labelFormatter = { style: { colors: '#94a3b8', fontSize: '10px' }, formatter: (v) => v ? v.toFixed(2) : '' };
+
+                    yaxisConfig = [
+                        { seriesName: series[0].name, labels: labelFormatter },
+                        { seriesName: 'Price', opposite: true, labels: priceLabelStyle }
+                    ];
+                }
+                commonOpts.yaxis = yaxisConfig;
+            }
+
+            if (advancedCharts[key]) {
+                // Optimization: Only update series and xaxis
+                advancedCharts[key].updateOptions({ xaxis: { categories: series[0].data.map((_, i) => i) } });
+                advancedCharts[key].updateSeries(series);
+            } else {
+                commonOpts.series = series;
+                commonOpts.xaxis.categories = series[0].data.map((_, i) => i);
+                advancedCharts[key] = new ApexCharts(el, commonOpts);
+                advancedCharts[key].render();
+            }
+        }
+
+        // Initial Render
+        renderAdvancedCharts('NIFTY');
+        setInterval(() => renderAdvancedCharts(activeChartSymbol), 30000); // Chart refresh every 30s
     </script>
 </body>
 
