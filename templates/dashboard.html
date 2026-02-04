@@ -1251,7 +1251,6 @@
         try {
             const res = await fetch(`/api/oi_history?symbol=${symbol}`);
             const data = await res.json();
-        */
 
         const containerId = `#chart-${symbol}`;
         const container = document.querySelector(containerId);
@@ -1395,6 +1394,7 @@
             console.error(`Chart Error ${symbol}:`, e);
         }
         }
+        */
         async function renderAdvancedCharts(symbol) {
             try {
                 const res = await fetch(`/api/oi_history?symbol=${symbol}`);
