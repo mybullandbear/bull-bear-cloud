@@ -318,28 +318,28 @@
         </div>
         </div>
 
-        <div id="view-signals" class="absolute inset-0 p-4 overflow-auto hidden flex flex-col pt-20">
-            <h2 class="text-2xl font-bold text-white mb-6 px-2">Strategy Matrix</h2>
-            <div class="overflow-x-auto rounded-xl border border-slate-800 shadow-2xl bg-black/40 backdrop-blur-md">
-                <table class="w-full text-left border-collapse">
-                    <thead class="bg-slate-900/80 text-slate-400 text-xs uppercase tracking-wider">
+        <div id="view-signals" class="absolute inset-0 p-2 overflow-y-auto hidden flex flex-col pt-20">
+            <h2 class="text-xl font-bold text-white mb-4 px-1">Strategy Matrix</h2>
+            <div class="rounded-xl border border-slate-800 shadow-2xl bg-black/40 backdrop-blur-md">
+                <table class="w-full table-fixed border-collapse">
+                    <thead class="bg-slate-900/80 text-slate-400 text-[10px] uppercase tracking-tighter">
                         <tr>
-                            <th class="p-4 font-semibold border-b border-slate-800">Index</th>
-                            <th class="p-4 font-semibold border-b border-slate-800">PCR</th>
-                            <th class="p-4 font-semibold border-b border-slate-800">Max Pain</th>
-                            <th class="p-4 font-semibold border-b border-slate-800">OI Flow</th>
-                            <th class="p-4 font-semibold border-b border-slate-800">Trend</th>
-                            <th class="p-4 font-semibold border-b border-slate-800 text-right">Action</th>
+                            <th class="p-2 w-1/6 text-left border-b border-slate-800">Index</th>
+                            <th class="p-2 w-1/6 text-center border-b border-slate-800">PCR</th>
+                            <th class="p-2 w-1/6 text-center border-b border-slate-800">Pain</th>
+                            <th class="p-2 w-1/6 text-center border-b border-slate-800">Flow</th>
+                            <th class="p-2 w-1/6 text-center border-b border-slate-800">Trend</th>
+                            <th class="p-2 w-1/6 text-right border-b border-slate-800">Act</th>
                         </tr>
                     </thead>
-                    <tbody id="signal-matrix-body" class="divide-y divide-slate-800 text-sm">
+                    <tbody id="signal-matrix-body" class="divide-y divide-slate-800 text-[11px]">
                         <!-- Filled by JS -->
                     </tbody>
                 </table>
             </div>
 
-            <h3 class="text-lg font-bold text-white mt-8 mb-4 px-2">Active Signal Logs</h3>
-            <div id="signals-container" class="space-y-3 max-w-3xl w-full">
+            <h3 class="text-md font-bold text-white mt-6 mb-2 px-1">Active Signal Logs</h3>
+            <div id="signals-container" class="space-y-2 max-w-3xl w-full pb-24">
             </div>
         </div>
 
@@ -845,30 +845,41 @@
                 let action = '<span class="text-slate-500 font-mono">NEUTRAL</span>';
                 let rowClass = 'hover:bg-slate-900/50 transition-colors';
 
+
                 if (bullCount >= 2 && bearCount === 0) {
-                    action = '<span class="text-emerald-400 font-bold bg-emerald-950/40 px-2 py-1 rounded border border-emerald-500/30 glow-text-sm">BUY CALL</span>';
-                    rowClass = 'bg-emerald-950/10 hover:bg-emerald-950/20 transition-colors';
+                    action = '<div class="text-emerald-400 font-bold text-[9px] leading-tight">BUY<br>CALL</div>';
+                    rowClass = 'bg-emerald-950/20';
                 } else if (bearCount >= 2 && bullCount === 0) {
-                    action = '<span class="text-rose-400 font-bold bg-rose-950/40 px-2 py-1 rounded border border-rose-500/30 glow-text-sm">BUY PUT</span>';
-                    rowClass = 'bg-rose-950/10 hover:bg-rose-950/20 transition-colors';
+                    action = '<div class="text-rose-400 font-bold text-[9px] leading-tight">BUY<br>PUT</div>';
+                    rowClass = 'bg-rose-950/20';
                 }
 
                 // Helper for cells
                 const badge = (status, val) => {
                     let col = 'text-slate-400';
-                    if (status === 'Bullish') col = 'text-emerald-400 font-medium';
-                    if (status === 'Bearish') col = 'text-rose-400 font-medium';
-                    return `<div class="${col}">${val}</div><div class="text-[10px] text-slate-600 uppercase">${status}</div>`;
+                    if (status === 'Bullish') col = 'text-emerald-400 font-bold';
+                    if (status === 'Bearish') col = 'text-rose-400 font-bold';
+
+                    // Truncate val if too long (e.g., trend text)
+                    let dispVal = val;
+                    if (String(val).includes(' vs ')) { // Trend count
+                        dispVal = val.replace(' vs ', '/');
+                    } else if (typeof val === 'string' && val.length > 8) {
+                        if (val.includes('Writing')) dispVal = val.includes('PE') ? 'PE Wrt' : 'CE Wrt';
+                        else dispVal = val.substring(0, 6) + '..';
+                    }
+
+                    return `<div class="${col} whitespace-nowrap">${dispVal}</div><div class="text-[8px] text-slate-600 uppercase tracking-tighter">${status.substring(0, 4)}</div>`;
                 };
 
                 rows += `
                     <tr class="${rowClass} border-b border-slate-800 last:border-0">
-                        <td class="p-4 font-bold text-white">${sym} <div class="text-xs text-slate-500">${d.spot}</div></td>
-                        <td class="p-4">${badge(m.pcr.status, m.pcr.val)}</td>
-                        <td class="p-4">${badge(m.max_pain.status, m.max_pain.val)}</td>
-                        <td class="p-4">${badge(m.oi_flow.status, m.oi_flow.val)}</td>
-                        <td class="p-4">${badge(m.trend.status, m.trend.val)}</td>
-                        <td class="p-4 text-right">${action}</td>
+                        <td class="p-2 font-bold text-white align-middle">${sym.substring(0, 4)} <div class="text-[9px] text-slate-500">${d.spot}</div></td>
+                        <td class="p-2 text-center align-middle">${badge(m.pcr.status, m.pcr.val)}</td>
+                        <td class="p-2 text-center align-middle">${badge(m.max_pain.status, m.max_pain.val)}</td>
+                        <td class="p-2 text-center align-middle">${badge(m.oi_flow.status, m.oi_flow.val)}</td>
+                        <td class="p-2 text-center align-middle">${badge(m.trend.status, m.trend.val)}</td>
+                        <td class="p-2 text-right align-middle">${action}</td>
                     </tr>
                  `;
 
